@@ -2,11 +2,13 @@ const prisma = require("../../config/prisma");
 const ApiError = require("../../utils/ApiError");
 const {
   toDateOnly,
+  formatDateOnly,
   serializeCashTransaction,
   serializeSalaryRecord,
   serializeKhataEntry,
   serializeSupplyExpense,
   serializeInventoryItem,
+  serializeInventoryUsage,
   serializeSponsorRecord
 } = require("./finance.serializer");
 
@@ -323,6 +325,85 @@ async function deleteInventoryItem(id) {
   return { id };
 }
 
+async function listInventoryUsages(query = {}) {
+  const where = {};
+  if (query.date) {
+    where.date = toDateOnly(query.date);
+  }
+  if (query.itemId) {
+    where.itemId = query.itemId;
+  }
+
+  const rows = await prisma.financeInventoryUsage.findMany({
+    where,
+    include: { item: { select: { name: true, unit: true } } },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: query.date ? undefined : 100
+  });
+
+  return rows.map(serializeInventoryUsage);
+}
+
+async function createInventoryUsage(data) {
+  const item = await prisma.financeInventoryItem.findUnique({ where: { id: data.itemId } });
+  if (!item) throw new ApiError(404, "Inventory item not found");
+  if (data.quantity > item.quantity) {
+    throw new ApiError(400, "Usage quantity exceeds available stock");
+  }
+
+  const row = await prisma.$transaction(async (tx) => {
+    const usage = await tx.financeInventoryUsage.create({
+      data: {
+        itemId: data.itemId,
+        quantity: data.quantity,
+        date: toDateOnly(data.date),
+        notes: data.notes ?? null
+      },
+      include: { item: { select: { name: true, unit: true } } }
+    });
+
+    await tx.financeInventoryItem.update({
+      where: { id: data.itemId },
+      data: { quantity: { decrement: data.quantity } }
+    });
+
+    return usage;
+  });
+
+  return serializeInventoryUsage(row);
+}
+
+async function getInventoryDailySummary(date) {
+  const day = toDateOnly(date);
+  const rows = await prisma.financeInventoryUsage.findMany({
+    where: { date: day },
+    include: { item: { select: { id: true, name: true, unit: true, quantity: true } } },
+    orderBy: { createdAt: "asc" }
+  });
+
+  const byItem = new Map();
+  for (const row of rows) {
+    const existing = byItem.get(row.itemId);
+    if (existing) {
+      existing.quantityUsed += row.quantity;
+    } else {
+      byItem.set(row.itemId, {
+        itemId: row.itemId,
+        name: row.item.name,
+        unit: row.item.unit,
+        quantityUsed: row.quantity,
+        currentStock: row.item.quantity
+      });
+    }
+  }
+
+  return {
+    date: formatDateOnly(day),
+    items: Array.from(byItem.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    usages: rows.map(serializeInventoryUsage)
+  };
+}
+
 async function listSponsorRecords() {
   const rows = await prisma.financeSponsor.findMany({ orderBy: { createdAt: "desc" } });
   return rows.map(serializeSponsorRecord);
@@ -392,6 +473,9 @@ module.exports = {
   createInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  listInventoryUsages,
+  createInventoryUsage,
+  getInventoryDailySummary,
   listSponsorRecords,
   createSponsorRecord,
   updateSponsorRecord,

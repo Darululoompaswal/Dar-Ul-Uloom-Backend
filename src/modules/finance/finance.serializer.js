@@ -85,6 +85,19 @@ function serializeInventoryItem(row) {
   };
 }
 
+function serializeInventoryUsage(row) {
+  return {
+    id: row.id,
+    itemId: row.itemId,
+    itemName: row.item?.name ?? null,
+    unit: row.item?.unit ?? null,
+    quantity: row.quantity,
+    date: formatDateOnly(row.date),
+    notes: row.notes,
+    createdAt: row.createdAt.toISOString()
+  };
+}
+
 function serializeSponsorRecord(row) {
   return {
     id: row.id,
@@ -107,5 +120,6 @@ module.exports = {
   serializeKhataEntry,
   serializeSupplyExpense,
   serializeInventoryItem,
+  serializeInventoryUsage,
   serializeSponsorRecord
 };

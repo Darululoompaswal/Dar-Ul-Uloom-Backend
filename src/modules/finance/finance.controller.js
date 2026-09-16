@@ -94,6 +94,20 @@ exports.deleteInventory = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.deleteInventoryItem(req.params.id) });
 });
 
+exports.listInventoryUsages = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.listInventoryUsages(req.validated.query) });
+});
+
+exports.createInventoryUsage = asyncHandler(async (req, res) => {
+  const data = await service.createInventoryUsage(req.validated.body);
+  res.status(201).json({ success: true, data });
+});
+
+exports.getInventoryDailySummary = asyncHandler(async (req, res) => {
+  const date = req.validated.query.date;
+  res.json({ success: true, data: await service.getInventoryDailySummary(date) });
+});
+
 exports.listSponsors = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.listSponsorRecords() });
 });

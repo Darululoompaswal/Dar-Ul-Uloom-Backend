@@ -147,6 +147,34 @@ const createInventorySchema = z.object({
   params: z.object({})
 });
 
+const listInventoryUsageSchema = z.object({
+  body: z.object({}),
+  query: z.object({
+    date: optional(dateString),
+    itemId: optional(z.string().uuid())
+  }),
+  params: z.object({})
+});
+
+const inventoryDailySummarySchema = z.object({
+  body: z.object({}),
+  query: z.object({
+    date: dateString
+  }),
+  params: z.object({})
+});
+
+const createInventoryUsageSchema = z.object({
+  body: z.object({
+    itemId: z.string().uuid(),
+    quantity: z.coerce.number().int().positive(),
+    date: dateString,
+    notes: nullableString
+  }),
+  query: z.object({}),
+  params: z.object({})
+});
+
 const listSponsorSchema = z.object({
   body: z.object({}),
   query: z.object({}),
@@ -224,6 +252,9 @@ module.exports = {
   listInventorySchema,
   createInventorySchema,
   updateInventorySchema,
+  listInventoryUsageSchema,
+  createInventoryUsageSchema,
+  inventoryDailySummarySchema,
   listSponsorSchema,
   createSponsorSchema,
   updateSponsorSchema,

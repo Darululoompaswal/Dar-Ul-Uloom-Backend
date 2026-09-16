@@ -707,8 +707,23 @@ model FinanceInventoryItem {
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  usages    FinanceInventoryUsage[]
 
   @@map("finance_inventory_items")
+}
+
+model FinanceInventoryUsage {
+  id        String               @id @default(uuid())
+  itemId    String
+  quantity  Int
+  date      DateTime             @db.Date
+  notes     String?
+  createdAt DateTime             @default(now())
+  item      FinanceInventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([itemId])
+  @@map("finance_inventory_usages")
 }
 
 model FinanceSponsor {

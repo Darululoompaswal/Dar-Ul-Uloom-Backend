@@ -20,6 +20,9 @@ const {
   listInventorySchema,
   createInventorySchema,
   updateInventorySchema,
+  listInventoryUsageSchema,
+  createInventoryUsageSchema,
+  inventoryDailySummarySchema,
   listSponsorSchema,
   createSponsorSchema,
   updateSponsorSchema,
@@ -147,6 +150,24 @@ router.delete(
   validate(financeIdSchema),
   audit("DELETE", "FINANCE_INVENTORY", (req) => req.params.id),
   controller.deleteInventory
+);
+
+router.get(
+  "/inventory-usages",
+  validate(listInventoryUsageSchema),
+  controller.listInventoryUsages
+);
+router.get(
+  "/inventory-usages/daily-summary",
+  validate(inventoryDailySummarySchema),
+  controller.getInventoryDailySummary
+);
+router.post(
+  "/inventory-usages",
+  writeRoles,
+  validate(createInventoryUsageSchema),
+  audit("CREATE", "FINANCE_INVENTORY_USAGE", (_, body) => body?.data?.id),
+  controller.createInventoryUsage
 );
 
 router.get("/sponsors", validate(listSponsorSchema), controller.listSponsors);

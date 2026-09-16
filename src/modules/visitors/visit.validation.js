@@ -7,8 +7,9 @@ const optional = (schema) => z.preprocess((value) => (value === "" ? undefined :
 const visitFields = z.object({
   visitorName: z.string().trim().min(1),
   visitorRelation: nullableString,
-  visitorCnic: nullableString,
-  visitorAddress: nullableString,
+  // Required at API layer; DB columns stay nullable for legacy rows.
+  visitorCnic: z.string().trim().min(1),
+  visitorAddress: z.string().trim().min(1),
   visitorPhone: nullableString,
   visitDate: z.coerce.date(),
   checkInTime: nullableDate,
@@ -48,7 +49,10 @@ const createVisitSchema = z.object({
 });
 
 const updateVisitSchema = z.object({
-  body: visitFields.partial(),
+  body: visitFields.partial().extend({
+    visitorCnic: z.string().trim().min(1),
+    visitorAddress: z.string().trim().min(1)
+  }),
   query: z.object({}),
   params: idParams
 });

@@ -47,6 +47,7 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/visitors", visitRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/finance", financeRoutes);
+app.use("/api/backups", require("./modules/backups/backups.routes"));
 
 const placeholderModules = [
   "attendance", "prizes",

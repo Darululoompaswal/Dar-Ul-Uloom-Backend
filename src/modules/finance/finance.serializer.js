@@ -42,11 +42,15 @@ function serializeSalaryRecord(row) {
 }
 
 function serializeKhataEntry(row) {
+  const amount = decimalToNumber(row.amount);
+  const settledAmount = decimalToNumber(row.settledAmount);
   return {
     id: row.id,
     partyName: row.partyName,
     type: row.type,
-    amount: decimalToNumber(row.amount),
+    amount,
+    settledAmount,
+    pendingAmount: Math.max(0, amount - settledAmount),
     date: formatDateOnly(row.date),
     description: row.description,
     createdAt: row.createdAt.toISOString()

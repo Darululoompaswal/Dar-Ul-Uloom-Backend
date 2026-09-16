@@ -63,7 +63,8 @@ async function getSummary() {
     .reduce((sum, row) => sum + row.amount, 0);
 
   const khataBalance = store.khataEntries.reduce((sum, row) => {
-    return row.type === "CREDIT" ? sum + row.amount : sum - row.amount;
+    const pending = row.pendingAmount ?? Math.max(0, row.amount - (row.settledAmount ?? 0));
+    return row.type === "CREDIT" ? sum + pending : sum - pending;
   }, 0);
 
   const suppliesThisMonth = store.supplyExpenses
@@ -197,6 +198,7 @@ async function createKhataEntry(data) {
       partyName: data.partyName,
       type: data.type,
       amount: data.amount,
+      settledAmount: Number(data.settledAmount ?? 0),
       date: toDateOnly(data.date),
       description: data.description
     }
@@ -212,6 +214,7 @@ async function updateKhataEntry(id, data) {
       partyName: data.partyName,
       type: data.type,
       amount: data.amount,
+      settledAmount: Number(data.settledAmount ?? 0),
       date: toDateOnly(data.date),
       description: data.description
     }

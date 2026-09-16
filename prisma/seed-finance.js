@@ -174,18 +174,23 @@ async function seedFinanceDemoData(client = prisma, options = {}) {
   for (let i = 0; i < 12; i += 1) {
     const day = 28 - i * 2;
     const party = pick(parties, i);
+    const creditAmount = amount(8000, 3000, i * 19);
+    const creditSettled = i % 3 === 0 ? Math.round(creditAmount * 0.4) : i % 3 === 1 ? creditAmount : 0;
     khataRows.push({
       partyName: party,
       type: "CREDIT",
-      amount: amount(8000, 3000, i * 19),
+      amount: creditAmount,
+      settledAmount: creditSettled,
       date: daysAgo(day),
       description: `Goods on credit from ${party}`
     });
     if (i % 2 === 0) {
+      const debitAmount = amount(4000, 1500, i * 23);
       khataRows.push({
         partyName: party,
         type: "DEBIT",
-        amount: amount(4000, 1500, i * 23),
+        amount: debitAmount,
+        settledAmount: i % 4 === 0 ? debitAmount : Math.round(debitAmount * 0.5),
         date: daysAgo(Math.max(0, day - 3)),
         description: `Partial settlement to ${party}`
       });

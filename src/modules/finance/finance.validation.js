@@ -62,14 +62,28 @@ const listKhataSchema = z.object({
   params: z.object({})
 });
 
+const nonNegativeAmount = z.coerce.number().min(0, "Amount must be zero or greater");
+const positiveQuantity = z.coerce.number().positive("Quantity must be greater than zero");
+
 const createKhataSchema = z.object({
-  body: z.object({
-    partyName: z.string().trim().min(1),
-    type: z.enum(KHATA_ENTRY_TYPES),
-    amount: positiveAmount,
-    date: dateString,
-    description: z.string().trim().min(1)
-  }),
+  body: z
+    .object({
+      partyName: z.string().trim().min(1),
+      type: z.enum(KHATA_ENTRY_TYPES),
+      amount: positiveAmount,
+      settledAmount: nonNegativeAmount.default(0),
+      date: dateString,
+      description: z.string().trim().min(1)
+    })
+    .superRefine((value, ctx) => {
+      if (value.settledAmount > value.amount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["settledAmount"],
+          message: "Settled amount cannot exceed total amount"
+        });
+      }
+    }),
   query: z.object({}),
   params: z.object({})
 });
@@ -81,9 +95,6 @@ const listSupplySchema = z.object({
   }),
   params: z.object({})
 });
-
-const nonNegativeAmount = z.coerce.number().min(0, "Amount must be zero or greater");
-const positiveQuantity = z.coerce.number().positive("Quantity must be greater than zero");
 
 const createSupplySchema = z.object({
   body: z

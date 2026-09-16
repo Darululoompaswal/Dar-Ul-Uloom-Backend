@@ -82,14 +82,39 @@ const listSupplySchema = z.object({
   params: z.object({})
 });
 
+const nonNegativeAmount = z.coerce.number().min(0, "Amount must be zero or greater");
+const positiveQuantity = z.coerce.number().positive("Quantity must be greater than zero");
+
 const createSupplySchema = z.object({
-  body: z.object({
-    category: z.enum(SUPPLY_CATEGORIES),
-    amount: positiveAmount,
-    date: dateString,
-    description: z.string().trim().min(1),
-    vendor: nullableString
-  }),
+  body: z
+    .object({
+      category: z.enum(SUPPLY_CATEGORIES),
+      amount: positiveAmount,
+      date: dateString,
+      description: z.string().trim().min(1),
+      vendor: nullableString,
+      payDate: optional(dateString.nullable()),
+      payerName: nullableString,
+      paidAmount: nonNegativeAmount.default(0),
+      pendingAmount: optional(nonNegativeAmount),
+      quantity: positiveQuantity.default(1)
+    })
+    .superRefine((value, ctx) => {
+      if (value.paidAmount > value.amount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paidAmount"],
+          message: "Paid amount cannot exceed total amount"
+        });
+      }
+      if (value.paidAmount > 0 && !value.payDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["payDate"],
+          message: "Pay date is required when paid amount is greater than zero"
+        });
+      }
+    }),
   query: z.object({}),
   params: z.object({})
 });

@@ -61,6 +61,11 @@ function serializeSupplyExpense(row) {
     date: formatDateOnly(row.date),
     description: row.description,
     vendor: row.vendor,
+    payDate: formatDateOnly(row.payDate),
+    payerName: row.payerName ?? null,
+    paidAmount: decimalToNumber(row.paidAmount),
+    pendingAmount: decimalToNumber(row.pendingAmount),
+    quantity: decimalToNumber(row.quantity),
     createdAt: row.createdAt.toISOString()
   };
 }

@@ -121,30 +121,50 @@ async function seedFinanceDemoData(client = prisma, options = {}) {
 
     // Weekly vegetables + occasional wood / construction
     if (weekday === 1 || weekday === 4) {
+      const vegAmount = amount(6500, 1500, day * 7);
+      const vegPaid = day % 3 === 0 ? vegAmount : day % 3 === 1 ? Math.round(vegAmount * 0.5) : 0;
       supplyRows.push({
         category: "VEGETABLES",
-        amount: amount(6500, 1500, day * 7),
+        amount: vegAmount,
         date,
         description: "Weekly vegetables for kitchen",
-        vendor: "Sabzi Mandi"
+        vendor: "Sabzi Mandi",
+        payDate: vegPaid > 0 ? date : null,
+        payerName: vegPaid > 0 ? "Kitchen Manager" : null,
+        paidAmount: vegPaid,
+        pendingAmount: Math.max(0, vegAmount - vegPaid),
+        quantity: amount(40, 15, day * 5)
       });
     }
     if (day === 20 || day === 10 || day === 2) {
+      const woodAmount = amount(14000, 3000, day * 13);
+      const woodPaid = day === 2 ? woodAmount : Math.round(woodAmount * 0.6);
       supplyRows.push({
         category: "WOOD",
-        amount: amount(14000, 3000, day * 13),
+        amount: woodAmount,
         date,
         description: "Firewood delivery",
-        vendor: "Timber Depot"
+        vendor: "Timber Depot",
+        payDate: date,
+        payerName: "Admin Office",
+        paidAmount: woodPaid,
+        pendingAmount: Math.max(0, woodAmount - woodPaid),
+        quantity: amount(8, 3, day * 11)
       });
     }
     if (day === 18 || day === 5) {
+      const buildAmount = amount(22000, 5000, day * 17);
       supplyRows.push({
         category: "CONSTRUCTION",
-        amount: amount(22000, 5000, day * 17),
+        amount: buildAmount,
         date,
         description: "Minor construction / repair materials",
-        vendor: "BuildMart"
+        vendor: "BuildMart",
+        payDate: null,
+        payerName: null,
+        paidAmount: 0,
+        pendingAmount: buildAmount,
+        quantity: amount(12, 4, day * 19)
       });
     }
   }

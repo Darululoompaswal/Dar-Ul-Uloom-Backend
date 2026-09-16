@@ -233,14 +233,28 @@ async function listSupplyExpenses(query) {
   return rows.map(serializeSupplyExpense);
 }
 
+function resolveSupplyPaymentFields(data) {
+  const paidAmount = Number(data.paidAmount ?? 0);
+  const pendingAmount = Math.max(0, Number(data.amount) - paidAmount);
+  return {
+    payDate: data.payDate ? toDateOnly(data.payDate) : null,
+    payerName: data.payerName ?? null,
+    paidAmount,
+    pendingAmount,
+    quantity: Number(data.quantity ?? 1)
+  };
+}
+
 async function createSupplyExpense(data) {
+  const payment = resolveSupplyPaymentFields(data);
   const row = await prisma.supplyExpense.create({
     data: {
       category: data.category,
       amount: data.amount,
       date: toDateOnly(data.date),
       description: data.description,
-      vendor: data.vendor ?? null
+      vendor: data.vendor ?? null,
+      ...payment
     }
   });
   return serializeSupplyExpense(row);
@@ -248,6 +262,7 @@ async function createSupplyExpense(data) {
 
 async function updateSupplyExpense(id, data) {
   await assertExists("supplyExpense", id, "Supply expense not found");
+  const payment = resolveSupplyPaymentFields(data);
   const row = await prisma.supplyExpense.update({
     where: { id },
     data: {
@@ -255,7 +270,8 @@ async function updateSupplyExpense(id, data) {
       amount: data.amount,
       date: toDateOnly(data.date),
       description: data.description,
-      vendor: data.vendor ?? null
+      vendor: data.vendor ?? null,
+      ...payment
     }
   });
   return serializeSupplyExpense(row);

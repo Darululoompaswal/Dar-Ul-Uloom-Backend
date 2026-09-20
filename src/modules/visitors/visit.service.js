@@ -28,6 +28,18 @@ function mapPrismaError(error) {
   return error;
 }
 
+/** Local calendar day start (inclusive) for date-range filters. */
+function dayStart(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Start of the day after `value` (exclusive upper bound). */
+function dayAfter(value) {
+  const start = dayStart(value);
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+}
+
 async function create(data) {
   try {
     return await prisma.visit.create({
@@ -49,8 +61,8 @@ async function list(query) {
     ...(query.from || query.to
       ? {
           visitDate: {
-            ...(query.from ? { gte: query.from } : {}),
-            ...(query.to ? { lte: query.to } : {})
+            ...(query.from ? { gte: dayStart(query.from) } : {}),
+            ...(query.to ? { lt: dayAfter(query.to) } : {})
           }
         }
       : {}),

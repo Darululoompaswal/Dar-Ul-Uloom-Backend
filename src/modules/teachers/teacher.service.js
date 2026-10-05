@@ -67,7 +67,9 @@ async function list(query) {
         { fatherName: { contains: search, mode: "insensitive" } },
         { cnic: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } }
+        { email: { contains: search, mode: "insensitive" } },
+        { qualification: { contains: search, mode: "insensitive" } },
+        { subject: { contains: search, mode: "insensitive" } }
       ]
     } : {})
   };

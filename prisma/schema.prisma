@@ -335,6 +335,8 @@ model Teacher {
   phone          String?
   email          String?
   address        String?
+  qualification  String?
+  subject        String?
   joiningDate    DateTime?
   status         String @default("ACTIVE")
 

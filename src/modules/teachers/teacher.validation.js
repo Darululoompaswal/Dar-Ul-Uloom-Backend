@@ -13,6 +13,8 @@ const teacherFields = z.object({
   phone: nullableString,
   email: z.string().trim().email().optional().nullable(),
   address: nullableString,
+  qualification: nullableString,
+  subject: nullableString,
   joiningDate: nullableDate,
   status: z.string().trim().min(1).optional(),
   departmentIds: z.array(z.string().uuid()).max(50).optional()

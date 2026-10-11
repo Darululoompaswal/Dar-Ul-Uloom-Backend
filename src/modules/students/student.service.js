@@ -71,7 +71,7 @@ async function list(query) {
   const admissionStatus = query.admissionStatus?.trim();
   const unassignedClass = query.unassignedClass === "true";
 
-  const where = {};
+  const where = { deletedAt: null };
 
   if (search) {
     where.OR = [
@@ -120,8 +120,8 @@ async function list(query) {
 }
 
 async function getById(id) {
-  const student = await prisma.student.findUnique({
-    where: { id },
+  const student = await prisma.student.findFirst({
+    where: { id, deletedAt: null },
     include: {
       guardians: true,
       admissions: {
@@ -155,7 +155,7 @@ async function update(id, data) {
   return prisma.$transaction(async (tx) => {
     const updated = await tx.student.update({
       where: { id },
-      data: student
+      data: { ...student, version: { increment: 1 } }
     });
 
     if (guardians) {
@@ -199,30 +199,20 @@ async function removeLocalUpload(fileUrl) {
 }
 
 async function remove(id) {
-  const existing = await prisma.student.findUnique({
-    where: { id },
-    select: { id: true, photoUrl: true }
+  const existing = await prisma.student.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, version: true }
   });
 
   if (!existing) throw new ApiError(404, "Student not found");
 
-  await prisma.$transaction(async (tx) => {
-    // These relations are ON DELETE RESTRICT, so their rows have to go first.
-    await tx.attendanceRecord.deleteMany({ where: { studentId: id } });
-    await tx.studentPrize.deleteMany({ where: { studentId: id } });
-    await tx.sponsorship.deleteMany({ where: { studentId: id } });
-    await tx.boardApplication.deleteMany({ where: { studentId: id } });
-    await tx.studentEnrollment.deleteMany({ where: { studentId: id } });
-
-    // A visit is a gate log of who came to the madrassa, so it outlives the student.
-    await tx.visit.updateMany({ where: { studentId: id }, data: { studentId: null } });
-
-    // Guardian, StudentAdmission, StudentDocument, StudentStatusHistory and
-    // HifzDailyReport cascade from this delete.
-    await tx.student.delete({ where: { id } });
+  await prisma.student.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      version: { increment: 1 }
+    }
   });
-
-  await removeLocalUpload(existing.photoUrl);
 
   return { id: existing.id };
 }

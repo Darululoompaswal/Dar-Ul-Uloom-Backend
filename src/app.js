@@ -17,6 +17,8 @@ const teacherRoutes = require("./modules/teachers/teacher.routes");
 const visitRoutes = require("./modules/visitors/visit.routes");
 const auditLogRoutes = require("./modules/audit-logs/auditLog.routes");
 const financeRoutes = require("./modules/finance/finance.routes");
+const syncRoutes = require("./modules/sync/sync.routes");
+const attendanceRoutes = require("./modules/attendance/attendance.routes");
 
 const app = express();
 
@@ -47,10 +49,12 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/visitors", visitRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/finance", financeRoutes);
+app.use("/api/sync", syncRoutes);
+app.use("/api/attendance", attendanceRoutes);
 app.use("/api/backups", require("./modules/backups/backups.routes"));
 
 const placeholderModules = [
-  "attendance", "prizes",
+  "prizes",
   "inventory", "sponsors", "board", "reports"
 ];
 

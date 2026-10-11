@@ -26,7 +26,7 @@ async function getStore() {
     inventoryItems,
     sponsors
   ] = await Promise.all([
-    prisma.cashTransaction.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.cashTransaction.findMany({ where: { deletedAt: null }, orderBy: { createdAt: "desc" } }),
     prisma.salaryRecord.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.khataEntry.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.supplyExpense.findMany({ orderBy: { createdAt: "desc" } }),
@@ -95,7 +95,10 @@ async function getSummary() {
 
 async function listCashTransactions(query) {
   const rows = await prisma.cashTransaction.findMany({
-    where: query.type ? { type: query.type } : undefined,
+    where: {
+      deletedAt: null,
+      ...(query.type ? { type: query.type } : {})
+    },
     orderBy: { createdAt: "desc" }
   });
   return rows.map(serializeCashTransaction);
@@ -125,7 +128,8 @@ async function updateCashTransaction(id, data) {
       date: toDateOnly(data.date),
       category: data.category,
       description: data.description,
-      reference: data.reference ?? null
+      reference: data.reference ?? null,
+      version: { increment: 1 }
     }
   });
   return serializeCashTransaction(row);
@@ -133,7 +137,13 @@ async function updateCashTransaction(id, data) {
 
 async function deleteCashTransaction(id) {
   await assertExists("cashTransaction", id, "Cash transaction not found");
-  await prisma.cashTransaction.delete({ where: { id } });
+  await prisma.cashTransaction.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      version: { increment: 1 }
+    }
+  });
   return { id };
 }
 
@@ -446,7 +456,9 @@ async function deleteSponsorRecord(id) {
 }
 
 async function assertExists(model, id, message) {
-  const row = await prisma[model].findUnique({ where: { id }, select: { id: true } });
+  const row = model === "cashTransaction"
+    ? await prisma.cashTransaction.findFirst({ where: { id, deletedAt: null }, select: { id: true } })
+    : await prisma[model].findUnique({ where: { id }, select: { id: true } });
   if (!row) throw new ApiError(404, message);
 }
 

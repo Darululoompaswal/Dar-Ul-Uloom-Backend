@@ -107,12 +107,16 @@ model Department {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
 
   classes            Class[]
   enrollments        StudentEnrollment[]
   admissions         StudentAdmission[]
   teacherDepartments TeacherDepartment[]
   attendanceSessions AttendanceSession[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model AcademicYear {
@@ -124,10 +128,14 @@ model AcademicYear {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
   classes     Class[]
   enrollments StudentEnrollment[]
   admissions  StudentAdmission[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model Student {
@@ -161,9 +169,11 @@ model Student {
 
   photoUrl String?
   status   StudentStatus @default(ACTIVE)
+  version  Int           @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   guardians         Guardian[]
   enrollments       StudentEnrollment[]
@@ -181,6 +191,8 @@ model Student {
   @@index([fullNameUr])
   @@index([fatherNameEn])
   @@index([fatherNameUr])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model Guardian {
@@ -270,8 +282,9 @@ model Class {
   classType String?
   isActive  Boolean @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id])
 
@@ -283,6 +296,8 @@ model Class {
   timetableEntries   TimetableEntry[]
 
   @@unique([departmentId, academicYearId, nameEn])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model StudentEnrollment {
@@ -339,13 +354,18 @@ model Teacher {
   subject        String?
   joiningDate    DateTime?
   status         String @default("ACTIVE")
+  version        Int    @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  departments     TeacherDepartment[]
+  departments      TeacherDepartment[]
   timetableEntries TimetableEntry[]
   visits           Visit[]
+
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model TeacherDepartment {
@@ -395,13 +415,15 @@ model TimetableEntry {
 }
 
 model AttendanceSession {
-  id           String @id @default(uuid())
+  id           String   @id @default(uuid())
   departmentId String
   classId      String
   date         DateTime
-  sessionType  String @default("DAILY")
+  sessionType  String   @default("DAILY")
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id])
 
@@ -410,23 +432,30 @@ model AttendanceSession {
   records AttendanceRecord[]
 
   @@unique([classId, date, sessionType])
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([date])
 }
 
 model AttendanceRecord {
-  id                  String @id @default(uuid())
+  id                  String           @id @default(uuid())
   attendanceSessionId String
   studentId           String
   status              AttendanceStatus
   remarks             String?
+  version             Int              @default(1)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   attendanceSession AttendanceSession @relation(fields: [attendanceSessionId], references: [id], onDelete: Cascade)
 
   student Student @relation(fields: [studentId], references: [id])
 
   @@unique([attendanceSessionId, studentId])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model HifzDailyReport {
@@ -648,10 +677,15 @@ model CashTransaction {
   category    String
   description String
   reference   String?
+  version     Int                 @default(1)
   createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
 
   @@index([date])
   @@index([type])
+  @@index([updatedAt])
+  @@index([deletedAt])
 }
 
 model SalaryRecord {
@@ -663,9 +697,11 @@ model SalaryRecord {
   paidDate     DateTime?    @db.Date
   notes        String?
   createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([month])
   @@index([status])
+  @@index([updatedAt])
 }
 
 model KhataEntry {
@@ -677,9 +713,11 @@ model KhataEntry {
   date          DateTime       @db.Date
   description   String
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([date])
   @@index([partyName])
+  @@index([updatedAt])
 }
 
 model SupplyExpense {
@@ -695,10 +733,12 @@ model SupplyExpense {
   pendingAmount Decimal        @default(0) @db.Decimal(12, 2)
   quantity      Decimal        @default(1) @db.Decimal(12, 2)
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([date])
   @@index([category])
   @@index([payDate])
+  @@index([updatedAt])
 }
 
 model FinanceInventoryItem {
@@ -721,10 +761,12 @@ model FinanceInventoryUsage {
   date      DateTime             @db.Date
   notes     String?
   createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
   item      FinanceInventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([itemId])
+  @@index([updatedAt])
   @@map("finance_inventory_usages")
 }
 
@@ -737,6 +779,36 @@ model FinanceSponsor {
   notes         String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  @@index([updatedAt])
   @@map("finance_sponsors")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  key          String
+  userId       String
+  method       String
+  path         String
+  responseJson Json?
+  statusCode   Int      @default(200)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([createdAt])
+}
+
+model ClientMutation {
+  id               String   @id @default(uuid())
+  clientMutationId String   @unique
+  userId           String
+  entityType       String
+  entityId         String?
+  operation        SyncOperation
+  resultJson       Json?
+  appliedAt        DateTime @default(now())
+
+  @@index([userId, appliedAt])
+  @@index([entityType, entityId])
 }

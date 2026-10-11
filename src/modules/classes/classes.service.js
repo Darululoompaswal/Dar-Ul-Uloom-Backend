@@ -19,6 +19,7 @@ function list({ departmentId, academicYearId }) {
   return prisma.class.findMany({
     where: {
       isActive: true,
+      deletedAt: null,
       ...(departmentId ? { departmentId } : {}),
       ...(academicYearId ? { academicYearId } : {})
     },
@@ -73,7 +74,7 @@ async function update(id, data) {
 }
 
 async function remove(id) {
-  const existing = await prisma.class.findUnique({ where: { id } });
+  const existing = await prisma.class.findFirst({ where: { id, deletedAt: null } });
   if (!existing) throw new ApiError(404, "Class not found");
 
   const activeAdmissions = await prisma.studentAdmission.count({
@@ -83,7 +84,10 @@ async function remove(id) {
     throw new ApiError(409, "Cannot delete a class with active student admissions");
   }
 
-  await prisma.class.delete({ where: { id } });
+  await prisma.class.update({
+    where: { id },
+    data: { deletedAt: new Date(), isActive: false }
+  });
   return { id };
 }
 

@@ -57,6 +57,7 @@ async function list(query) {
   const search = query.search?.trim();
 
   const where = {
+    deletedAt: null,
     ...(query.status ? { status: query.status } : {}),
     ...(query.departmentId ? { departments: { some: { departmentId: query.departmentId } } } : {}),
     ...(search ? {
@@ -89,8 +90,8 @@ async function list(query) {
 }
 
 async function getById(id) {
-  const teacher = await prisma.teacher.findUnique({
-    where: { id },
+  const teacher = await prisma.teacher.findFirst({
+    where: { id, deletedAt: null },
     include: teacherInclude
   });
 
@@ -152,7 +153,10 @@ async function update(id, data) {
 
   try {
     return await prisma.$transaction(async (tx) => {
-      await tx.teacher.update({ where: { id }, data: teacher });
+      await tx.teacher.update({
+        where: { id },
+        data: { ...teacher, version: { increment: 1 } }
+      });
 
       if (departmentIds) {
         await tx.teacherDepartment.deleteMany({ where: { teacherId: id } });
@@ -173,15 +177,15 @@ async function update(id, data) {
 async function remove(id) {
   await getById(id);
 
-  return prisma.$transaction(async (tx) => {
-    // Visit.teacherId is nullable, so the visit history is preserved.
-    await tx.visit.updateMany({ where: { teacherId: id }, data: { teacherId: null } });
-    // TimetableEntry.teacher and TeacherDepartment have no SET NULL fallback.
-    await tx.timetableEntry.deleteMany({ where: { teacherId: id } });
-    await tx.teacherDepartment.deleteMany({ where: { teacherId: id } });
-    await tx.teacher.delete({ where: { id } });
-    return { id };
+  await prisma.teacher.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      version: { increment: 1 }
+    }
   });
+
+  return { id };
 }
 
 module.exports = { create, list, getById, stats, update, remove };

@@ -4,6 +4,7 @@ const validate = require("../../middleware/validate.middleware");
 const { authenticate } = require("../../middleware/auth.middleware");
 const authorize = require("../../middleware/role.middleware");
 const audit = require("../../middleware/audit.middleware");
+const idempotency = require("../../middleware/idempotency.middleware");
 const {
   listCashSchema,
   createCashSchema,
@@ -41,6 +42,7 @@ router.get("/cash-transactions", validate(listCashSchema), controller.listCash);
 router.post(
   "/cash-transactions",
   writeRoles,
+  idempotency(),
   validate(createCashSchema),
   audit("CREATE", "CASH_TRANSACTION", (_, body) => body?.data?.id),
   controller.createCash
@@ -48,6 +50,7 @@ router.post(
 router.put(
   "/cash-transactions/:id",
   writeRoles,
+  idempotency(),
   validate(updateCashSchema),
   audit("UPDATE", "CASH_TRANSACTION", (req) => req.params.id),
   controller.updateCash

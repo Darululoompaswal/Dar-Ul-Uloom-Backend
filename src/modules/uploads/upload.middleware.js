@@ -9,20 +9,40 @@ const UPLOAD_FOLDER = "students";
 const UPLOAD_DIR = path.join(UPLOAD_ROOT, UPLOAD_FOLDER);
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-// Extension comes from the mime type, never from the client file name.
+/** Extension comes from resolved mime type, never from the client file name alone. */
 const EXTENSION_BY_MIME = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
   "image/webp": ".webp",
-  "image/gif": ".gif"
+  "image/gif": ".gif",
+  "application/pdf": ".pdf"
+};
+
+const MIME_BY_EXTENSION = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".pdf": "application/pdf"
 };
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+function resolveMimeType(file) {
+  if (file.mimetype && EXTENSION_BY_MIME[file.mimetype]) {
+    return file.mimetype;
+  }
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  return MIME_BY_EXTENSION[ext] || null;
+}
+
 const storage = multer.diskStorage({
   destination: UPLOAD_DIR,
   filename: (req, file, cb) => {
-    cb(null, `${crypto.randomUUID()}${EXTENSION_BY_MIME[file.mimetype]}`);
+    const mime = resolveMimeType(file);
+    const extension = mime ? EXTENSION_BY_MIME[mime] : "";
+    cb(null, `${crypto.randomUUID()}${extension}`);
   }
 });
 
@@ -30,21 +50,31 @@ const handler = multer({
   storage,
   limits: { fileSize: MAX_FILE_SIZE, files: 1 },
   fileFilter: (req, file, cb) => {
-    if (!EXTENSION_BY_MIME[file.mimetype]) {
-      return cb(new ApiError(422, `Unsupported file type: ${file.mimetype}. Allowed: ${Object.keys(EXTENSION_BY_MIME).join(", ")}`));
+    const mime = resolveMimeType(file);
+    if (!mime) {
+      return cb(
+        new ApiError(
+          422,
+          `Unsupported file type${file.mimetype ? `: ${file.mimetype}` : ""}. Allowed: JPEG, PNG, WebP, GIF, or PDF.`
+        )
+      );
     }
+    // Normalize so controller / disk storage see a known type (helps empty browser MIME).
+    file.mimetype = mime;
     cb(null, true);
   }
 }).single("file");
 
-const uploadSingle = (req, res, next) => handler(req, res, (error) => {
-  if (error instanceof multer.MulterError) {
-    const message = error.code === "LIMIT_FILE_SIZE"
-      ? "File is larger than the 5 MB limit"
-      : `Upload failed: ${error.message}`;
-    return next(new ApiError(422, message));
-  }
-  next(error);
-});
+const uploadSingle = (req, res, next) =>
+  handler(req, res, (error) => {
+    if (error instanceof multer.MulterError) {
+      const message =
+        error.code === "LIMIT_FILE_SIZE"
+          ? "File is larger than the 5 MB limit. Compress the scan or choose a smaller file."
+          : `Upload failed: ${error.message}`;
+      return next(new ApiError(422, message));
+    }
+    next(error);
+  });
 
-module.exports = { UPLOAD_ROOT, UPLOAD_FOLDER, uploadSingle };
+module.exports = { UPLOAD_ROOT, UPLOAD_FOLDER, uploadSingle, EXTENSION_BY_MIME };

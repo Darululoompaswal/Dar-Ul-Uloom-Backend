@@ -5,7 +5,7 @@ const { seedFinanceDemoData } = require("./seed-finance");
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash("ketchup_111", 12);
+  const passwordHash = await bcrypt.hash("shazi111", 12);
 
   await prisma.user.deleteMany({ where: { username: "admin" } });
 

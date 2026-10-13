@@ -48,7 +48,7 @@ Default seeded administrator:
 
 ```text
 username: shazi
-password: ketchup_111
+password: shazi111
 ```
 
 Change the password immediately after first login.

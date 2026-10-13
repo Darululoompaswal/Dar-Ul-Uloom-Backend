@@ -294,6 +294,7 @@ model Class {
   admissions         StudentAdmission[]
   attendanceSessions AttendanceSession[]
   timetableEntries   TimetableEntry[]
+  lectures           ClassLecture[]
 
   @@unique([departmentId, academicYearId, nameEn])
   @@index([updatedAt])
@@ -771,18 +772,191 @@ model FinanceInventoryUsage {
 }
 
 model FinanceSponsor {
-  id            String   @id @default(uuid())
-  name          String
-  phone         String?
-  monthlyAmount Decimal  @db.Decimal(12, 2)
-  studentCount  Int      @default(1)
-  notes         String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String    @id @default(uuid())
+  name           String
+  phone          String?
+  address        String?
+  monthlyAmount  Decimal   @db.Decimal(12, 2)
+  currency       String    @default("PKR")
+  studentCount   Int       @default(1)
+  studentIds     Json      @default("[]")
+  durationMonths Int       @default(12)
+  startsOn       DateTime? @db.Date
+  reference      String?
+  notes          String?
+  studentProfiles Json     @default("{}")
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([updatedAt])
   @@map("finance_sponsors")
+}
+
+model HifzProgressSheet {
+  id          String   @id @default(uuid())
+  classId     String
+  className   String
+  studentId   String
+  studentName String
+  fatherName  String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rows HifzProgressRow[]
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+  @@index([updatedAt])
+}
+
+model HifzProgressRow {
+  id            String    @id @default(uuid())
+  sheetId       String
+  date          DateTime? @db.Date
+  dayLabel      String    @default("")
+  sabaqPara     String    @default("")
+  sabaqLines    String    @default("")
+  sabaqPukhtagi String    @default("")
+  sabqiPara     String    @default("")
+  ghalti        String    @default("")
+  atkan         String    @default("")
+  sabqiPukhtagi String    @default("")
+  sami          String    @default("")
+  sortOrder     Int       @default(0)
+
+  sheet HifzProgressSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+
+  @@index([sheetId])
+}
+
+model ExamResult {
+  id                 String   @id @default(uuid())
+  classId            String
+  className          String
+  studentId          String
+  studentName        String
+  fatherName         String   @default("")
+  registrationNumber String?
+  examName           String
+  subject            String
+  marksObtained      Float
+  marksMax           Float
+  grade              String
+  examDate           DateTime @db.Date
+  remarks            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([classId])
+  @@index([studentId])
+  @@index([examName])
+  @@index([examDate])
+  @@index([updatedAt])
+}
+
+model PrizeAward {
+  id                 String   @id @default(uuid())
+  studentId          String?
+  registrationNumber String?
+  studentName        String
+  fatherName         String   @default("")
+  certificateNo      String
+  departmentId       String
+  departmentName     String
+  prizeWon           String
+  prizeType          String
+  prizeTypeOther     String?
+  awardedDate        DateTime @db.Date
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([departmentId])
+  @@index([awardedDate])
+  @@index([updatedAt])
+}
+
+model BoardExam {
+  id                   String   @id @default(uuid())
+  studentId            String?
+  studentName          String
+  fatherName           String   @default("")
+  registrationNumber   String?
+  className            String?
+  department           String
+  board                String
+  academicYear         String
+  examSession          String?
+  result               String   @default("PENDING")
+  position             String?
+  certificateReceived  Boolean  @default(false)
+  degreeReceived       Boolean  @default(false)
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([department])
+  @@index([board])
+  @@index([result])
+  @@index([academicYear])
+  @@index([updatedAt])
+}
+
+model BoardRegistration {
+  id                 String   @id @default(uuid())
+  studentId          String?
+  studentName        String
+  fatherName         String   @default("")
+  registrationNumber String?
+  className          String?
+  department         String
+  board              String   @default("WIFAQ")
+  academicYear       String
+  studyYear          Int
+  status             String   @default("PENDING")
+  registrationDate   DateTime @db.Date
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([department])
+  @@index([status])
+  @@index([academicYear])
+  @@index([registrationDate])
+  @@index([updatedAt])
+}
+
+model ClassLecture {
+  id          String   @id @default(uuid())
+  classId     String
+  subjectName String
+  teacherId   String?
+  teacherName String?
+  dayOfWeek   Int?
+  startTime   String?
+  endTime     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([updatedAt])
+}
+
+model InstitutionSettings {
+  id                   String   @id @default("default")
+  nameUr               String   @default("")
+  nameEn               String   @default("")
+  addressUr            String   @default("")
+  addressEn            String   @default("")
+  affiliationUr        String   @default("")
+  affiliationEn        String   @default("")
+  affiliationNumberUr  String   @default("")
+  affiliationNumberEn  String   @default("")
+  updatedAt            DateTime @updatedAt
 }
 
 model IdempotencyKey {

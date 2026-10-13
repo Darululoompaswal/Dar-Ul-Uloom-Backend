@@ -27,6 +27,7 @@ const {
   listSponsorSchema,
   createSponsorSchema,
   updateSponsorSchema,
+  upsertSponsorPerformanceSchema,
   financeIdSchema
 } = require("./finance.validation");
 
@@ -194,6 +195,13 @@ router.delete(
   validate(financeIdSchema),
   audit("DELETE", "FINANCE_SPONSOR", (req) => req.params.id),
   controller.deleteSponsor
+);
+router.put(
+  "/sponsors/:id/students/:studentId/performance",
+  writeRoles,
+  validate(upsertSponsorPerformanceSchema),
+  audit("UPDATE", "FINANCE_SPONSOR_PERFORMANCE", (req) => req.params.id),
+  controller.upsertSponsorPerformance
 );
 
 module.exports = router;

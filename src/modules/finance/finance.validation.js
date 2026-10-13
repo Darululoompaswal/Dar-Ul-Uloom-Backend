@@ -181,17 +181,58 @@ const listSponsorSchema = z.object({
   params: z.object({})
 });
 
+const SPONSOR_CURRENCIES = ["PKR", "USD", "GBP"];
+
 const createSponsorSchema = z.object({
   body: z.object({
     name: z.string().trim().min(1),
     phone: nullableString,
+    address: nullableString,
     monthlyAmount: positiveAmount,
+    currency: z.enum(SPONSOR_CURRENCIES).default("PKR"),
     studentCount: z.coerce.number().int().min(1).default(1),
+    studentIds: z.array(z.string().trim().min(1)).default([]),
+    durationMonths: z.coerce.number().int().min(1).default(12),
+    startsOn: optional(dateString.nullable()),
+    reference: nullableString,
     notes: nullableString,
+    studentProfiles: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
     isActive: z.boolean().default(true)
   }),
   query: z.object({}),
   params: z.object({})
+});
+
+const upsertSponsorPerformanceSchema = z.object({
+  body: z
+    .object({
+      studentId: z.string().trim().min(1).optional(),
+      expenditureEducation: z.string().optional().default(""),
+      expenditureFood: z.string().optional().default(""),
+      expenditureDress: z.string().optional().default(""),
+      expenditureOther: z.string().optional().default(""),
+      expenditurePrize: z.string().optional().default(""),
+      firstTermIslamicSubject: z.string().optional().default(""),
+      firstTermIslamicPerformance: z.string().optional().default(""),
+      firstTermSecularSubject: z.string().optional().default(""),
+      firstTermSecularPerformance: z.string().optional().default(""),
+      annualIslamicSubject: z.string().optional().default(""),
+      annualIslamicPerformance: z.string().optional().default(""),
+      annualSecularSubject: z.string().optional().default(""),
+      annualSecularPerformance: z.string().optional().default(""),
+      sportsType: z.string().optional().default(""),
+      sportsPerformance: z.string().optional().default(""),
+      bazamType: z.string().optional().default(""),
+      bazamPerformance: z.string().optional().default(""),
+      computerType: z.string().optional().default(""),
+      computerPerformance: z.string().optional().default("")
+    })
+    .passthrough(),
+  query: z.object({}),
+  params: z.object({
+    id: z.string().uuid(),
+    studentId: z.string().trim().min(1)
+  })
 });
 
 const financeIdSchema = z.object({
@@ -258,5 +299,6 @@ module.exports = {
   listSponsorSchema,
   createSponsorSchema,
   updateSponsorSchema,
+  upsertSponsorPerformanceSchema,
   financeIdSchema
 };

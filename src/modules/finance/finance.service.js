@@ -419,15 +419,36 @@ async function listSponsorRecords() {
   return rows.map(serializeSponsorRecord);
 }
 
+function normalizeStudentIds(value) {
+  return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+}
+
+function sponsorWriteData(data) {
+  const studentIds = normalizeStudentIds(data.studentIds);
+  return {
+    name: data.name,
+    phone: data.phone ?? null,
+    address: data.address ?? null,
+    monthlyAmount: data.monthlyAmount,
+    currency: data.currency ?? "PKR",
+    studentCount: data.studentCount ?? Math.max(studentIds.length, 1),
+    studentIds,
+    durationMonths: data.durationMonths ?? 12,
+    startsOn: data.startsOn ? toDateOnly(data.startsOn) : null,
+    reference: data.reference ?? null,
+    notes: data.notes ?? null,
+    ...(data.studentProfiles && typeof data.studentProfiles === "object"
+      ? { studentProfiles: data.studentProfiles }
+      : {}),
+    isActive: data.isActive ?? true
+  };
+}
+
 async function createSponsorRecord(data) {
   const row = await prisma.financeSponsor.create({
     data: {
-      name: data.name,
-      phone: data.phone ?? null,
-      monthlyAmount: data.monthlyAmount,
-      studentCount: data.studentCount ?? 1,
-      notes: data.notes ?? null,
-      isActive: data.isActive ?? true
+      ...sponsorWriteData(data),
+      studentProfiles: data.studentProfiles ?? {}
     }
   });
   return serializeSponsorRecord(row);
@@ -435,18 +456,66 @@ async function createSponsorRecord(data) {
 
 async function updateSponsorRecord(id, data) {
   await assertExists("financeSponsor", id, "Sponsor record not found");
+  const existing = await prisma.financeSponsor.findUnique({ where: { id } });
+  const studentIds = normalizeStudentIds(data.studentIds);
+  const previousProfiles =
+    existing?.studentProfiles &&
+    typeof existing.studentProfiles === "object" &&
+    !Array.isArray(existing.studentProfiles)
+      ? existing.studentProfiles
+      : {};
+  const allowed = new Set(studentIds);
+  const studentProfiles =
+    data.studentProfiles && typeof data.studentProfiles === "object"
+      ? data.studentProfiles
+      : Object.fromEntries(
+          Object.entries(previousProfiles).filter(([studentId]) => allowed.has(String(studentId)))
+        );
+
   const row = await prisma.financeSponsor.update({
     where: { id },
     data: {
-      name: data.name,
-      phone: data.phone ?? null,
-      monthlyAmount: data.monthlyAmount,
-      studentCount: data.studentCount ?? 1,
-      notes: data.notes ?? null,
-      isActive: data.isActive ?? true
+      ...sponsorWriteData(data),
+      studentProfiles
     }
   });
   return serializeSponsorRecord(row);
+}
+
+async function upsertSponsorStudentPerformance(sponsorId, studentId, profile) {
+  await assertExists("financeSponsor", sponsorId, "Sponsor record not found");
+  const existing = await prisma.financeSponsor.findUnique({ where: { id: sponsorId } });
+  const previousProfiles =
+    existing?.studentProfiles &&
+    typeof existing.studentProfiles === "object" &&
+    !Array.isArray(existing.studentProfiles)
+      ? existing.studentProfiles
+      : {};
+  const studentIds = normalizeStudentIds(existing?.studentIds);
+  if (!studentIds.includes(String(studentId))) {
+    studentIds.push(String(studentId));
+  }
+
+  const nextProfile = {
+    ...profile,
+    studentId: String(studentId),
+    updatedAt: new Date().toISOString()
+  };
+  const studentProfiles = {
+    ...previousProfiles,
+    [String(studentId)]: nextProfile
+  };
+
+  await prisma.financeSponsor.update({
+    where: { id: sponsorId },
+    data: {
+      studentIds,
+      studentCount: Math.max(existing?.studentCount ?? 1, studentIds.length),
+      studentProfiles
+    }
+  });
+
+  return nextProfile;
 }
 
 async function deleteSponsorRecord(id) {
@@ -491,5 +560,6 @@ module.exports = {
   listSponsorRecords,
   createSponsorRecord,
   updateSponsorRecord,
+  upsertSponsorStudentPerformance,
   deleteSponsorRecord
 };

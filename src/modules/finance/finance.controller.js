@@ -124,3 +124,12 @@ exports.updateSponsor = asyncHandler(async (req, res) => {
 exports.deleteSponsor = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.deleteSponsorRecord(req.params.id) });
 });
+
+exports.upsertSponsorPerformance = asyncHandler(async (req, res) => {
+  const data = await service.upsertSponsorStudentPerformance(
+    req.params.id,
+    req.params.studentId,
+    req.validated.body
+  );
+  res.json({ success: true, data });
+});

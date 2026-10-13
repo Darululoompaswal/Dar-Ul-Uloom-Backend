@@ -91,4 +91,77 @@ async function remove(id) {
   return { id };
 }
 
-module.exports = { list, create, update, remove };
+async function listStudents(classId) {
+  const existing = await prisma.class.findFirst({ where: { id: classId, deletedAt: null } });
+  if (!existing) throw new ApiError(404, "Class not found");
+
+  const [enrollments, admissions] = await Promise.all([
+    prisma.studentEnrollment.findMany({
+      where: { classId, status: "ACTIVE" },
+      include: {
+        student: {
+          select: {
+            id: true,
+            fullNameEn: true,
+            fullNameUr: true,
+            fatherNameEn: true,
+            fatherNameUr: true,
+            registrationNumber: true
+          }
+        }
+      },
+      orderBy: { enrollmentDate: "desc" }
+    }),
+    prisma.studentAdmission.findMany({
+      where: { classId, status: "ACTIVE" },
+      include: {
+        student: {
+          select: {
+            id: true,
+            fullNameEn: true,
+            fullNameUr: true,
+            fatherNameEn: true,
+            fatherNameUr: true,
+            registrationNumber: true
+          }
+        }
+      }
+    })
+  ]);
+
+  const byStudent = new Map();
+
+  for (const entry of enrollments) {
+    const student = entry.student;
+    if (!student) continue;
+    byStudent.set(student.id, {
+      id: entry.id,
+      classId,
+      academicYearId: entry.academicYearId,
+      studentId: student.id,
+      fullName: student.fullNameEn || student.fullNameUr || student.registrationNumber || student.id,
+      fatherName: student.fatherNameEn || student.fatherNameUr || "",
+      registrationNumber: student.registrationNumber ?? null,
+      enrolledAt: entry.enrollmentDate.toISOString()
+    });
+  }
+
+  for (const entry of admissions) {
+    const student = entry.student;
+    if (!student || byStudent.has(student.id)) continue;
+    byStudent.set(student.id, {
+      id: entry.id,
+      classId,
+      academicYearId: entry.academicYearId,
+      studentId: student.id,
+      fullName: student.fullNameEn || student.fullNameUr || student.registrationNumber || student.id,
+      fatherName: student.fatherNameEn || student.fatherNameUr || "",
+      registrationNumber: student.registrationNumber ?? null,
+      enrolledAt: entry.admissionDate?.toISOString?.() ?? entry.createdAt.toISOString()
+    });
+  }
+
+  return [...byStudent.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+module.exports = { list, create, update, remove, listStudents };

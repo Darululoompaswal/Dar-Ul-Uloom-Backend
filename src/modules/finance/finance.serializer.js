@@ -99,13 +99,32 @@ function serializeInventoryUsage(row) {
 }
 
 function serializeSponsorRecord(row) {
+  const currency =
+    row.currency === "USD" || row.currency === "GBP" || row.currency === "PKR"
+      ? row.currency
+      : "PKR";
+  const studentIds = Array.isArray(row.studentIds)
+    ? row.studentIds.filter(Boolean).map(String)
+    : [];
+  const studentProfiles =
+    row.studentProfiles && typeof row.studentProfiles === "object" && !Array.isArray(row.studentProfiles)
+      ? row.studentProfiles
+      : {};
+
   return {
     id: row.id,
     name: row.name,
     phone: row.phone,
+    address: row.address ?? null,
     monthlyAmount: decimalToNumber(row.monthlyAmount),
+    currency,
     studentCount: row.studentCount,
+    studentIds,
+    durationMonths: row.durationMonths ?? 12,
+    startsOn: formatDateOnly(row.startsOn),
+    reference: row.reference ?? null,
     notes: row.notes,
+    studentProfiles,
     isActive: row.isActive,
     createdAt: row.createdAt.toISOString()
   };

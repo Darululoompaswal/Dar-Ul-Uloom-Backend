@@ -19,3 +19,7 @@ exports.update = asyncHandler(async (req, res) => {
 exports.remove = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.remove(req.params.id) });
 });
+
+exports.listStudents = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.listStudents(req.params.id) });
+});

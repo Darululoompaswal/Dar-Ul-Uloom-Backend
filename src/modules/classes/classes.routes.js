@@ -8,12 +8,31 @@ const {
   listClassesSchema,
   createClassSchema,
   updateClassSchema,
-  deleteClassSchema
+  deleteClassSchema,
+  classIdSchema
 } = require("./classes.validation");
+const lecturesController = require("../lectures/lectures.controller");
+const {
+  listByClassSchema,
+  createSchema: createLectureSchema
+} = require("../lectures/lectures.validation");
 
 router.use(authenticate);
 
 router.get("/", validate(listClassesSchema), controller.list);
+router.get("/:id/students", validate(classIdSchema), controller.listStudents);
+router.get(
+  "/:classId/lectures",
+  validate(listByClassSchema),
+  lecturesController.listByClass
+);
+router.post(
+  "/:classId/lectures",
+  authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY", "TEACHER"),
+  validate(createLectureSchema),
+  audit("CREATE", "CLASS_LECTURE", (_, body) => body?.data?.id),
+  lecturesController.create
+);
 router.post(
   "/",
   authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY"),

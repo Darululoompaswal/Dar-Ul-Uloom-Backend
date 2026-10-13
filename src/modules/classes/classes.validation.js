@@ -48,9 +48,18 @@ const deleteClassSchema = z.object({
   })
 });
 
+const classIdSchema = z.object({
+  body: z.object({}),
+  query: z.object({}),
+  params: z.object({
+    id: z.string().uuid()
+  })
+});
+
 module.exports = {
   listClassesSchema,
   createClassSchema,
   updateClassSchema,
-  deleteClassSchema
+  deleteClassSchema,
+  classIdSchema
 };

@@ -52,11 +52,14 @@ app.use("/api/finance", financeRoutes);
 app.use("/api/sync", syncRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/backups", require("./modules/backups/backups.routes"));
+app.use("/api/prizes", require("./modules/prizes/prizes.routes"));
+app.use("/api/board", require("./modules/board/board.routes"));
+app.use("/api/hifz-progress", require("./modules/hifz-progress/hifzProgress.routes"));
+app.use("/api/exam-results", require("./modules/exam-results/examResults.routes"));
+app.use("/api/lectures", require("./modules/lectures/lectures.routes"));
+app.use("/api/settings", require("./modules/settings/settings.routes"));
 
-const placeholderModules = [
-  "prizes",
-  "inventory", "sponsors", "board", "reports"
-];
+const placeholderModules = ["inventory", "sponsors", "reports"];
 
 for (const name of placeholderModules) {
   app.use(`/api/${name}`, require(`./modules/${name}/${name}.routes`));

@@ -9,8 +9,8 @@ const UPLOAD_URL_PREFIX = "/uploads/";
 const UPLOAD_BASE = path.resolve(UPLOAD_ROOT);
 
 function splitStudentPayload(data) {
-  const { guardians, admission, documents, ...student } = data;
-  return { student, guardians, admission, documents };
+  const { guardians, admission, documents, statusReason, statusEffectiveDate, ...student } = data;
+  return { student, guardians, admission, documents, statusReason, statusEffectiveDate };
 }
 
 async function create(data) {
@@ -18,6 +18,15 @@ async function create(data) {
 
   return prisma.$transaction(async (tx) => {
     const created = await tx.student.create({ data: student });
+
+    await tx.studentStatusHistory.create({
+      data: {
+        studentId: created.id,
+        status: created.status,
+        effectiveDate: admission?.admissionDate ?? new Date(),
+        reason: "Initial status"
+      }
+    });
 
     if (guardians.length) {
       await tx.guardian.createMany({
@@ -34,6 +43,20 @@ async function create(data) {
         studentId: created.id
       }
     });
+
+    if (admission?.classId) {
+      await tx.studentEnrollment.create({
+        data: {
+          studentId: created.id,
+          classId: admission.classId,
+          departmentId: admission.departmentId,
+          academicYearId: admission.academicYearId,
+          enrollmentDate: admission.admissionDate ?? new Date(),
+          startDate: admission.admissionDate ?? new Date(),
+          status: "ACTIVE"
+        }
+      });
+    }
 
     if (documents.length) {
       await tx.studentDocument.createMany({
@@ -55,7 +78,12 @@ async function create(data) {
             academicYear: true
           }
         },
-        documents: true
+        documents: true,
+        enrollments: {
+          include: { department: true, class: true, academicYear: true },
+          orderBy: [{ startDate: "desc" }, { createdAt: "desc" }]
+        },
+        statusHistory: { orderBy: [{ effectiveDate: "desc" }, { createdAt: "desc" }] }
       }
     });
   });
@@ -138,9 +166,10 @@ async function getById(id) {
           department: true,
           class: true,
           academicYear: true
-        }
+        },
+        orderBy: [{ startDate: "desc" }, { createdAt: "desc" }]
       },
-      statusHistory: { orderBy: { effectiveDate: "desc" } }
+      statusHistory: { orderBy: [{ effectiveDate: "desc" }, { createdAt: "desc" }] }
     }
   });
 
@@ -150,13 +179,25 @@ async function getById(id) {
 
 async function update(id, data) {
   const existing = await getById(id);
-  const { student, guardians, documents } = splitStudentPayload(data);
+  const { student, guardians, documents, statusReason, statusEffectiveDate } = splitStudentPayload(data);
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.student.update({
       where: { id },
       data: { ...student, version: { increment: 1 } }
     });
+
+    const nextStatus = student.status;
+    if (nextStatus && nextStatus !== existing.status) {
+      await tx.studentStatusHistory.create({
+        data: {
+          studentId: id,
+          status: nextStatus,
+          effectiveDate: statusEffectiveDate ?? new Date(),
+          reason: statusReason ?? null
+        }
+      });
+    }
 
     if (guardians) {
       await tx.guardian.deleteMany({ where: { studentId: id } });
@@ -183,7 +224,8 @@ async function update(id, data) {
         admissions: {
           include: { department: true, class: true, academicYear: true }
         },
-        documents: true
+        documents: true,
+        statusHistory: { orderBy: { effectiveDate: "desc" } }
       }
     });
   });
@@ -220,17 +262,8 @@ async function remove(id) {
 async function syncActiveEnrollment(tx, student, admission, classId) {
   const activeEnrollment = student.enrollments.find((entry) => entry.status === "ACTIVE");
 
-  if (activeEnrollment) {
-    if (classId) {
-      await tx.studentEnrollment.update({
-        where: { id: activeEnrollment.id },
-        data: {
-          classId,
-          departmentId: admission.departmentId,
-          academicYearId: admission.academicYearId
-        }
-      });
-    } else {
+  if (!classId) {
+    if (activeEnrollment) {
       await tx.studentEnrollment.update({
         where: { id: activeEnrollment.id },
         data: { status: "TRANSFERRED", endDate: new Date() }
@@ -239,17 +272,30 @@ async function syncActiveEnrollment(tx, student, admission, classId) {
     return;
   }
 
-  if (classId) {
-    await tx.studentEnrollment.create({
-      data: {
-        studentId: student.id,
-        classId,
-        departmentId: admission.departmentId,
-        academicYearId: admission.academicYearId,
-        status: "ACTIVE"
-      }
+  if (activeEnrollment) {
+    const samePlacement =
+      activeEnrollment.classId === classId &&
+      activeEnrollment.departmentId === admission.departmentId &&
+      activeEnrollment.academicYearId === admission.academicYearId;
+
+    if (samePlacement) return;
+
+    // Close the previous enrollment so class moves stay in history.
+    await tx.studentEnrollment.update({
+      where: { id: activeEnrollment.id },
+      data: { status: "TRANSFERRED", endDate: new Date() }
     });
   }
+
+  await tx.studentEnrollment.create({
+    data: {
+      studentId: student.id,
+      classId,
+      departmentId: admission.departmentId,
+      academicYearId: admission.academicYearId,
+      status: "ACTIVE"
+    }
+  });
 }
 
 async function updateAdmissionPlacement(studentId, data) {

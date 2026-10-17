@@ -12,7 +12,8 @@
     "prisma:seed:finance": "node prisma/run-seed-finance.js",
     "prisma:seed:finance:force": "node prisma/run-seed-finance.js --force",
     "db:cli": "node scripts/db-cli.js",
-    "seed:demo": "node scripts/seed-demo-data.mjs"
+    "seed:demo": "node scripts/seed-demo-data.mjs",
+    "seed:mega": "node scripts/seed-mega-demo.js"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

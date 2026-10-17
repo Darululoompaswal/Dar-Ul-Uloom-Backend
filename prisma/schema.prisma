@@ -830,6 +830,29 @@ model HifzProgressRow {
   @@index([sheetId])
 }
 
+/// Annual Hifz report card with three quarterly exam terms (matches printed form).
+model HifzAnnualResult {
+  id               String   @id @default(uuid())
+  classId          String
+  className        String
+  studentId        String
+  studentName      String
+  fatherName       String   @default("")
+  residence        String   @default("")
+  district         String   @default("")
+  academicYear     String
+  departmentLabel  String   @default("شعبہ حفظ")
+  /// Three term objects: lesson progress, attendance, marks, remarks
+  terms            Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([classId, studentId, academicYear])
+  @@index([studentId])
+  @@index([academicYear])
+  @@index([updatedAt])
+}
+
 model ExamResult {
   id                 String   @id @default(uuid())
   classId            String

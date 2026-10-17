@@ -25,7 +25,7 @@ const listSchema = z.object({
   body: z.object({}),
   query: z.object({
     page: optional(z.coerce.number().int().min(1)),
-    limit: optional(z.coerce.number().int().min(1).max(100)),
+    limit: optional(z.coerce.number().int().min(1).max(500)),
     search: optional(z.string().trim()),
     classId: optional(z.string().trim().min(1)),
     examName: optional(z.string().trim().min(1))
@@ -51,4 +51,12 @@ const updateSchema = z.object({
   params: idParams
 });
 
-module.exports = { listSchema, idSchema, createSchema, updateSchema };
+const bulkUpsertSchema = z.object({
+  body: z.object({
+    results: z.array(resultFields).min(1).max(500)
+  }),
+  query: z.object({}),
+  params: z.object({})
+});
+
+module.exports = { listSchema, idSchema, createSchema, updateSchema, bulkUpsertSchema };

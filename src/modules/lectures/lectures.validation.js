@@ -25,6 +25,30 @@ const lectureFields = lectureBodyBase.superRefine((value, ctx) => {
       message: "subject is required"
     });
   }
+
+  const start = value.startTime?.trim();
+  const end = value.endTime?.trim();
+  if ((start && !end) || (!start && end)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [start ? "endTime" : "startTime"],
+      message: "Both start and end time are required together"
+    });
+  }
+  if (start && end && end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endTime"],
+      message: "End time must be after start time"
+    });
+  }
+  if (value.teacherId && (!start || !end)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["startTime"],
+      message: "Start and end time are required when a teacher is assigned"
+    });
+  }
 });
 
 const listByClassSchema = z.object({

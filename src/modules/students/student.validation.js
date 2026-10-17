@@ -44,6 +44,15 @@ const documentSchema = z.object({
   fileSize: z.number().int().nonnegative().optional().nullable()
 });
 
+const studentStatusEnum = z.enum([
+  "ACTIVE",
+  "INACTIVE",
+  "EARLY_LEFT",
+  "PASSED_OUT",
+  "TRANSFERRED",
+  "GRADUATED"
+]);
+
 const studentFields = z.object({
   registrationNumber: nullableString,
 
@@ -54,6 +63,7 @@ const studentFields = z.object({
 
   dateOfBirth: nullableDate,
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional().nullable(),
+  status: studentStatusEnum.optional(),
 
   nationality: nullableString,
   religion: nullableString,
@@ -73,6 +83,10 @@ const studentFields = z.object({
 
   photoUrl: nullableString,
 
+  /** Optional notes when recording a status change in history */
+  statusReason: nullableString,
+  statusEffectiveDate: nullableDate,
+
   guardians: z.array(guardianSchema).max(10).optional(),
   admission: admissionSchema.optional(),
   documents: z.array(documentSchema).max(20).optional()
@@ -86,7 +100,32 @@ const withStudentNameRules = (schema) => schema.refine(
   { message: "At least one father name is required", path: ["fatherNameEn"] }
 );
 
-const studentBody = withStudentNameRules(studentFields);
+/** On PATCH, only enforce name rules when a name field is present in the payload. */
+const withPartialStudentNameRules = (schema) => schema.superRefine((data, ctx) => {
+  const touchesStudentName =
+    data.fullNameEn !== undefined ||
+    data.fullNameUr !== undefined ||
+    data.fatherNameEn !== undefined ||
+    data.fatherNameUr !== undefined;
+
+  if (!touchesStudentName) return;
+
+  if (!data.fullNameEn && !data.fullNameUr) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one student name is required",
+      path: ["fullNameEn"]
+    });
+  }
+
+  if (!data.fatherNameEn && !data.fatherNameUr) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one father name is required",
+      path: ["fatherNameEn"]
+    });
+  }
+});
 
 const createStudentSchema = z.object({
   body: withStudentNameRules(studentFields.extend({ admission: admissionSchema })),
@@ -95,7 +134,7 @@ const createStudentSchema = z.object({
 });
 
 const updateStudentSchema = z.object({
-  body: withStudentNameRules(studentFields.partial()),
+  body: withPartialStudentNameRules(studentFields.partial()),
   query: z.object({}),
   params: z.object({ id: z.string().uuid() })
 });

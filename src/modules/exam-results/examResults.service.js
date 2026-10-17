@@ -140,4 +140,39 @@ async function remove(id) {
   return { id };
 }
 
-module.exports = { list, listExamNames, getById, create, update, remove };
+async function bulkUpsert(items = []) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "No results provided");
+  }
+
+  const rows = await prisma.$transaction(async (tx) => {
+    const saved = [];
+    for (const item of items) {
+      const payload = writeData(item);
+      const existing = await tx.examResult.findFirst({
+        where: {
+          classId: payload.classId,
+          studentId: payload.studentId,
+          examName: payload.examName,
+          subject: payload.subject
+        }
+      });
+
+      if (existing) {
+        saved.push(
+          await tx.examResult.update({
+            where: { id: existing.id },
+            data: payload
+          })
+        );
+      } else {
+        saved.push(await tx.examResult.create({ data: payload }));
+      }
+    }
+    return saved;
+  });
+
+  return rows.map(serialize);
+}
+
+module.exports = { list, listExamNames, getById, create, update, remove, bulkUpsert };

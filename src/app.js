@@ -55,6 +55,7 @@ app.use("/api/backups", require("./modules/backups/backups.routes"));
 app.use("/api/prizes", require("./modules/prizes/prizes.routes"));
 app.use("/api/board", require("./modules/board/board.routes"));
 app.use("/api/hifz-progress", require("./modules/hifz-progress/hifzProgress.routes"));
+app.use("/api/hifz-annual", require("./modules/hifz-annual/hifzAnnual.routes"));
 app.use("/api/exam-results", require("./modules/exam-results/examResults.routes"));
 app.use("/api/lectures", require("./modules/lectures/lectures.routes"));
 app.use("/api/settings", require("./modules/settings/settings.routes"));

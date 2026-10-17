@@ -20,6 +20,11 @@ exports.create = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data });
 });
 
+exports.bulkUpsert = asyncHandler(async (req, res) => {
+  const data = await service.bulkUpsert(req.validated.body.results);
+  res.json({ success: true, data });
+});
+
 exports.update = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.update(req.params.id, req.validated.body) });
 });

@@ -51,7 +51,9 @@ function writeData(data) {
 async function list(query = {}) {
   const { page, limit, skip } = getPagination(query);
   const search = query.search?.trim();
+  const studentId = query.studentId?.trim();
   const where = {
+    ...(studentId ? { studentId } : {}),
     ...(query.departmentId ? { departmentId: query.departmentId } : {}),
     ...(query.prizeType ? { prizeType: query.prizeType } : {}),
     ...(query.from || query.to

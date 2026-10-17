@@ -8,7 +8,8 @@ const {
   listSchema,
   idSchema,
   createSchema,
-  updateSchema
+  updateSchema,
+  bulkUpsertSchema
 } = require("./examResults.validation");
 
 router.use(authenticate);
@@ -25,6 +26,13 @@ router.post(
   validate(createSchema),
   audit("CREATE", "EXAM_RESULT", (_, body) => body?.data?.id),
   controller.create
+);
+router.post(
+  "/bulk",
+  writeRoles,
+  validate(bulkUpsertSchema),
+  audit("UPDATE", "EXAM_RESULT", () => "bulk"),
+  controller.bulkUpsert
 );
 router.put(
   "/:id",

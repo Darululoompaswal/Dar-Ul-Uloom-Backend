@@ -852,6 +852,35 @@ model HifzProgressRow {
   @@index([sheetId])
 }
 
+/// Sabqi Para register: 30-para progress + monthly jaiza summary (printed form).
+model HifzSabqiParaSheet {
+  id                 String   @id @default(uuid())
+  classId            String
+  className          String
+  studentId          String
+  studentName        String
+  fatherName         String   @default("")
+  teacherName        String   @default("")
+  /// e.g. month label for the jaiza block (بابت ماہ)
+  monthLabel         String   @default("")
+  /// Corresponding Hijri/other date line (مطابق)
+  correspondingDate  String   @default("")
+  absence            String   @default("")
+  illness            String   @default("")
+  leaveDays          String   @default("")
+  holidays           String   @default("")
+  totalDuration      String   @default("")
+  remarks            String   @default("")
+  /// 30 para rows: paraNumber, startDate, endDate, sabqiNama, ghalti, atkan, pukhtagi
+  rows               Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+  @@index([updatedAt])
+}
+
 /// Annual Hifz report card with three quarterly exam terms (matches printed form).
 model HifzAnnualResult {
   id               String   @id @default(uuid())

@@ -743,27 +743,67 @@ async function createFinance(students, teachers) {
   console.log("Creating finance data…");
   const thisMonth = monthKey();
 
-  // Cash — ~30 days
+  // Cash — ~30 days (with donor / receipt / bill / paid-by detail fields)
   const cashRows = [];
   const incomeCats = ["Donation", "Fees", "Sponsorship", "Zakat", "Sadaqah"];
   const expenseCats = ["Utilities", "Maintenance", "Kitchen", "Transport", "Stationery", "Medical"];
+  const incomeDescs = [
+    "General donation received",
+    "Monthly fee collection",
+    "Sponsorship installment",
+    "Zakat contribution",
+    "Sadaqah for kitchen"
+  ];
+  const expenseDescs = [
+    "Electricity / gas bill",
+    "Building repair materials",
+    "Kitchen provisions",
+    "Student van fuel",
+    "Classroom stationery",
+    "Clinic medicines"
+  ];
+  const payers = [
+    "Cashier Office",
+    "Admin Office",
+    "Principal Office",
+    "Kitchen In-charge",
+    "Transport Desk"
+  ];
+
   for (let day = 29; day >= 0; day -= 1) {
     const date = utcDaysAgo(day);
+    const inCat = pick(incomeCats, day);
+    const donorFirst = pick(FIRST_NAMES, day * 3);
+    const donorFather = pick(FATHER_NAMES, day * 5);
+    const donorCity = pick(CITIES, day);
+
     cashRows.push({
       type: "IN",
       amount: amount(15000, 8000, day * 3),
       date,
-      category: pick(incomeCats, day),
-      description: `${PREFIX}Daily income`,
-      reference: `${PREFIX}IN-${pad(day, 2)}`
+      category: inCat,
+      description: `${PREFIX}${pick(incomeDescs, day)}`,
+      reference: `${PREFIX}IN-${pad(day, 2)}`,
+      receiptNumber: `${PREFIX}RCP-${pad(day + 1, 3)}`,
+      donorName: `${PREFIX}${donorFirst} ${donorFather}`,
+      donorAddress: `${donorCity}, Pakistan`,
+      billNumber: null,
+      paidBy: null
     });
+
+    const outCat = pick(expenseCats, day + 1);
     cashRows.push({
       type: "OUT",
       amount: amount(7000, 3000, day * 5),
       date,
-      category: pick(expenseCats, day + 1),
-      description: `${PREFIX}Daily expense`,
-      reference: `${PREFIX}OUT-${pad(day, 2)}`
+      category: outCat,
+      description: `${PREFIX}${pick(expenseDescs, day + 1)}`,
+      reference: `${PREFIX}OUT-${pad(day, 2)}`,
+      receiptNumber: null,
+      donorName: null,
+      donorAddress: null,
+      billNumber: `${PREFIX}BILL-${pad(day + 1, 3)}`,
+      paidBy: `${PREFIX}${pick(payers, day)}`
     });
   }
   await prisma.cashTransaction.createMany({ data: cashRows });

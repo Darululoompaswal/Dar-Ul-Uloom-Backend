@@ -309,7 +309,12 @@ async function applyCash(operation, entityId, baseVersion, payload) {
       date: payload.date,
       category: payload.category,
       description: payload.description,
-      reference: payload.reference ?? null
+      reference: payload.reference ?? null,
+      receiptNumber: payload.receiptNumber ?? null,
+      donorName: payload.donorName ?? null,
+      donorAddress: payload.donorAddress ?? null,
+      billNumber: payload.billNumber ?? null,
+      paidBy: payload.paidBy ?? null
     });
     return { status: "applied", entityId: created.id, version: 1, data: created };
   }
@@ -338,7 +343,12 @@ async function applyCash(operation, entityId, baseVersion, payload) {
     date: payload.date ?? existing.date.toISOString().slice(0, 10),
     category: payload.category ?? existing.category,
     description: payload.description ?? existing.description,
-    reference: payload.reference ?? existing.reference
+    reference: payload.reference ?? existing.reference,
+    receiptNumber: payload.receiptNumber ?? existing.receiptNumber,
+    donorName: payload.donorName ?? existing.donorName,
+    donorAddress: payload.donorAddress ?? existing.donorAddress,
+    billNumber: payload.billNumber ?? existing.billNumber,
+    paidBy: payload.paidBy ?? existing.paidBy
   });
   return { status: "applied", entityId, version: (existing.version ?? 1) + 1, data: updated };
 }

@@ -29,7 +29,12 @@ const createCashSchema = z.object({
     date: dateString,
     category: z.string().trim().min(1),
     description: z.string().trim().min(1),
-    reference: nullableString
+    reference: nullableString,
+    receiptNumber: nullableString,
+    donorName: nullableString,
+    donorAddress: nullableString,
+    billNumber: nullableString,
+    paidBy: nullableString
   }),
   query: z.object({}),
   params: z.object({})

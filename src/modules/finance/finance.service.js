@@ -104,6 +104,17 @@ async function listCashTransactions(query) {
   return rows.map(serializeCashTransaction);
 }
 
+function cashDetailFields(data) {
+  return {
+    reference: data.reference ?? null,
+    receiptNumber: data.receiptNumber ?? null,
+    donorName: data.donorName ?? null,
+    donorAddress: data.donorAddress ?? null,
+    billNumber: data.billNumber ?? null,
+    paidBy: data.paidBy ?? null
+  };
+}
+
 async function createCashTransaction(data) {
   const row = await prisma.cashTransaction.create({
     data: {
@@ -112,7 +123,7 @@ async function createCashTransaction(data) {
       date: toDateOnly(data.date),
       category: data.category,
       description: data.description,
-      reference: data.reference ?? null
+      ...cashDetailFields(data)
     }
   });
   return serializeCashTransaction(row);
@@ -128,7 +139,7 @@ async function updateCashTransaction(id, data) {
       date: toDateOnly(data.date),
       category: data.category,
       description: data.description,
-      reference: data.reference ?? null,
+      ...cashDetailFields(data),
       version: { increment: 1 }
     }
   });

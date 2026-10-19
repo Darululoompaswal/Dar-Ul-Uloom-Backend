@@ -23,7 +23,12 @@ function serializeCashTransaction(row) {
     date: formatDateOnly(row.date),
     category: row.category,
     description: row.description,
-    reference: row.reference,
+    reference: row.reference ?? null,
+    receiptNumber: row.receiptNumber ?? null,
+    donorName: row.donorName ?? null,
+    donorAddress: row.donorAddress ?? null,
+    billNumber: row.billNumber ?? null,
+    paidBy: row.paidBy ?? null,
     createdAt: row.createdAt.toISOString()
   };
 }

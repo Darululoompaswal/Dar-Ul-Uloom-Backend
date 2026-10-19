@@ -671,17 +671,22 @@ enum SupplyCategory {
 }
 
 model CashTransaction {
-  id          String              @id @default(uuid())
-  type        CashTransactionType
-  amount      Decimal             @db.Decimal(12, 2)
-  date        DateTime            @db.Date
-  category    String
-  description String
-  reference   String?
-  version     Int                 @default(1)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  deletedAt   DateTime?
+  id            String              @id @default(uuid())
+  type          CashTransactionType
+  amount        Decimal             @db.Decimal(12, 2)
+  date          DateTime            @db.Date
+  category      String
+  description   String
+  reference     String?
+  receiptNumber String?
+  donorName     String?
+  donorAddress  String?
+  billNumber    String?
+  paidBy        String?
+  version       Int                 @default(1)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
 
   @@index([date])
   @@index([type])

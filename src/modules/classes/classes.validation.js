@@ -1,10 +1,13 @@
 const { z } = require("zod");
 
+const optional = (schema) => z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
+
 const listClassesSchema = z.object({
   body: z.object({}),
   query: z.object({
     departmentId: z.string().uuid().optional(),
-    academicYearId: z.string().uuid().optional()
+    academicYearId: z.string().uuid().optional(),
+    includeInactive: optional(z.coerce.boolean())
   }),
   params: z.object({})
 });

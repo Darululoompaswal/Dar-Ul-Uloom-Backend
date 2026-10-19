@@ -27,3 +27,24 @@ exports.update = asyncHandler(async (req, res) => {
 exports.remove = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.remove(req.params.id) });
 });
+
+exports.listAttendance = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    data: await service.listAttendance(req.params.id, req.validated.query)
+  });
+});
+
+exports.upsertAttendance = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    data: await service.upsertAttendance(req.params.id, req.validated.body)
+  });
+});
+
+exports.removeAttendance = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    data: await service.removeAttendance(req.params.id, req.validated.query.date)
+  });
+});

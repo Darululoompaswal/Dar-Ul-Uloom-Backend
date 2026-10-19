@@ -188,4 +188,94 @@ async function remove(id) {
   return { id };
 }
 
-module.exports = { create, list, getById, stats, update, remove };
+function toDateOnly(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function formatDateOnly(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toISOString().slice(0, 10);
+}
+
+function serializeTeacherAttendance(row) {
+  return {
+    id: row.id,
+    teacherId: row.teacherId,
+    date: formatDateOnly(row.date),
+    status: row.status,
+    remarks: row.remarks ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
+  };
+}
+
+async function listAttendance(teacherId, query = {}) {
+  await getById(teacherId);
+  const from = query.from ? toDateOnly(query.from) : null;
+  const to = query.to ? toDateOnly(query.to) : null;
+
+  const rows = await prisma.teacherAttendance.findMany({
+    where: {
+      teacherId,
+      ...(from || to
+        ? {
+            date: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {})
+            }
+          }
+        : {})
+    },
+    orderBy: { date: "desc" }
+  });
+
+  return rows.map(serializeTeacherAttendance);
+}
+
+async function upsertAttendance(teacherId, data) {
+  await getById(teacherId);
+  const date = toDateOnly(data.date);
+
+  const row = await prisma.teacherAttendance.upsert({
+    where: {
+      teacherId_date: { teacherId, date }
+    },
+    create: {
+      teacherId,
+      date,
+      status: data.status,
+      remarks: data.remarks ?? null
+    },
+    update: {
+      status: data.status,
+      remarks: data.remarks ?? null
+    }
+  });
+
+  return serializeTeacherAttendance(row);
+}
+
+async function removeAttendance(teacherId, dateValue) {
+  await getById(teacherId);
+  const date = toDateOnly(dateValue);
+  const existing = await prisma.teacherAttendance.findUnique({
+    where: { teacherId_date: { teacherId, date } }
+  });
+  if (!existing) throw new ApiError(404, "Attendance record not found");
+  await prisma.teacherAttendance.delete({ where: { id: existing.id } });
+  return { id: existing.id };
+}
+
+module.exports = {
+  create,
+  list,
+  getById,
+  stats,
+  update,
+  remove,
+  listAttendance,
+  upsertAttendance,
+  removeAttendance
+};

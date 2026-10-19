@@ -52,4 +52,42 @@ const updateTeacherSchema = z.object({
   params: idParams
 });
 
-module.exports = { listTeacherSchema, teacherIdSchema, createTeacherSchema, updateTeacherSchema };
+const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
+const attendanceStatuses = ["PRESENT", "ABSENT", "LATE", "LEAVE"];
+
+const listTeacherAttendanceSchema = z.object({
+  body: z.object({}),
+  query: z.object({
+    from: optional(dateString),
+    to: optional(dateString)
+  }),
+  params: idParams
+});
+
+const upsertTeacherAttendanceSchema = z.object({
+  body: z.object({
+    date: dateString,
+    status: z.enum(attendanceStatuses),
+    remarks: nullableString
+  }),
+  query: z.object({}),
+  params: idParams
+});
+
+const deleteTeacherAttendanceSchema = z.object({
+  body: z.object({}),
+  query: z.object({
+    date: dateString
+  }),
+  params: idParams
+});
+
+module.exports = {
+  listTeacherSchema,
+  teacherIdSchema,
+  createTeacherSchema,
+  updateTeacherSchema,
+  listTeacherAttendanceSchema,
+  upsertTeacherAttendanceSchema,
+  deleteTeacherAttendanceSchema
+};

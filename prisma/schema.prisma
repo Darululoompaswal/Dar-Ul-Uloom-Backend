@@ -364,9 +364,26 @@ model Teacher {
   departments      TeacherDepartment[]
   timetableEntries TimetableEntry[]
   visits           Visit[]
+  attendance       TeacherAttendance[]
 
   @@index([updatedAt])
   @@index([deletedAt])
+}
+
+model TeacherAttendance {
+  id        String           @id @default(uuid())
+  teacherId String
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  remarks   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date])
+  @@index([teacherId, date])
 }
 
 model TeacherDepartment {

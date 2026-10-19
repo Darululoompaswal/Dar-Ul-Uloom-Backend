@@ -75,9 +75,17 @@ async function getSummary() {
 
   const activeSponsors = store.sponsors.filter((row) => row.isActive).length;
 
+  const usdToPkr = Number(process.env.FX_USD_TO_PKR) > 0 ? Number(process.env.FX_USD_TO_PKR) : 280;
+  const gbpToPkr = Number(process.env.FX_GBP_TO_PKR) > 0 ? Number(process.env.FX_GBP_TO_PKR) : 360;
+  const toPkr = (amount, currency) => {
+    if (currency === "USD") return amount * usdToPkr;
+    if (currency === "GBP") return amount * gbpToPkr;
+    return amount;
+  };
+
   const sponsorshipMonthly = store.sponsors
     .filter((row) => row.isActive)
-    .reduce((sum, row) => sum + row.monthlyAmount, 0);
+    .reduce((sum, row) => sum + toPkr(row.monthlyAmount, row.currency), 0);
 
   return {
     cashIn,

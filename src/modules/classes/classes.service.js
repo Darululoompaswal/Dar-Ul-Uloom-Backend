@@ -15,11 +15,11 @@ const classSelect = {
   academicYear: { select: { id: true, name: true, isCurrent: true } }
 };
 
-function list({ departmentId, academicYearId }) {
+function list({ departmentId, academicYearId, includeInactive }) {
   return prisma.class.findMany({
     where: {
-      isActive: true,
       deletedAt: null,
+      ...(includeInactive ? {} : { isActive: true }),
       ...(departmentId ? { departmentId } : {}),
       ...(academicYearId ? { academicYearId } : {})
     },

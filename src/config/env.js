@@ -13,7 +13,9 @@ module.exports = {
   DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: process.env.JWT_SECRET,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
-  CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+  // Comma-separated allowlist. Empty = deny cross-origin in production, reflect in development.
+  // Explicit "*" still allows any origin (discouraged).
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "",
   BACKUP_DIR: process.env.BACKUP_DIR || "./backups",
   BACKUP_CRON: process.env.BACKUP_CRON || "0 2 * * *",
   SYNC_CRON: process.env.SYNC_CRON || "*/1 * * * *",

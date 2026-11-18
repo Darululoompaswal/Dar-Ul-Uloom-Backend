@@ -5,7 +5,7 @@ const env = require("../config/env");
 const ApiError = require("../utils/ApiError");
 const { exportCsv } = require("./csv.service");
 
-/** Tables exported for DATABASE (JSON) backups, in restore-safe parent→child order. */
+/** Full-system tables (parent→child restore order). */
 const JSON_TABLES = [
   { key: "departments", model: "department" },
   { key: "academicYears", model: "academicYear" },
@@ -33,12 +33,42 @@ const JSON_TABLES = [
   { key: "boardApplications", model: "boardApplication" },
   { key: "cashTransactions", model: "cashTransaction" },
   { key: "salaryRecords", model: "salaryRecord" },
+  { key: "feeRecords", model: "feeRecord" },
   { key: "khataEntries", model: "khataEntry" },
   { key: "supplyExpenses", model: "supplyExpense" },
   { key: "financeInventoryItems", model: "financeInventoryItem" },
   { key: "financeInventoryUsages", model: "financeInventoryUsage" },
   { key: "financeSponsors", model: "financeSponsor" }
 ];
+
+/** Finance-only tables — isolated from full-system backups. */
+const FINANCE_TABLES = [
+  { key: "cashTransactions", model: "cashTransaction" },
+  { key: "salaryRecords", model: "salaryRecord" },
+  { key: "feeRecords", model: "feeRecord" },
+  { key: "khataEntries", model: "khataEntry" },
+  { key: "supplyExpenses", model: "supplyExpense" },
+  { key: "financeInventoryItems", model: "financeInventoryItem" },
+  { key: "financeInventoryUsages", model: "financeInventoryUsage" },
+  { key: "financeSponsors", model: "financeSponsor" }
+];
+
+const SCOPE = {
+  FULL: {
+    id: "FULL",
+    kind: "madrassa-backup",
+    dirName: "full",
+    tables: JSON_TABLES,
+    filePrefix: "dup-backup"
+  },
+  FINANCE: {
+    id: "FINANCE",
+    kind: "madrassa-finance-backup",
+    dirName: "finance",
+    tables: FINANCE_TABLES,
+    filePrefix: "dup-finance-backup"
+  }
+};
 
 const CSV_TABLES = {
   students: () => prisma.student.findMany(),
@@ -59,14 +89,36 @@ const CSV_TABLES = {
   board_applications: () => prisma.boardApplication.findMany(),
   cash_transactions: () => prisma.cashTransaction.findMany(),
   salary_records: () => prisma.salaryRecord.findMany(),
+  fee_records: () => prisma.feeRecord.findMany(),
   khata_entries: () => prisma.khataEntry.findMany(),
   supply_expenses: () => prisma.supplyExpense.findMany(),
   finance_inventory_items: () => prisma.financeInventoryItem.findMany(),
   finance_sponsors: () => prisma.financeSponsor.findMany()
 };
 
+function resolveScope(scopeId) {
+  const key = String(scopeId || "FULL").toUpperCase();
+  const scope = SCOPE[key];
+  if (!scope) throw new ApiError(400, "Invalid backup scope");
+  return scope;
+}
+
 function stamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function normalizePath(location) {
+  return String(location || "").replace(/\\/g, "/");
+}
+
+function detectScopeFromLocation(location) {
+  const normalized = normalizePath(location);
+  if (normalized.includes("/finance/")) return "FINANCE";
+  return "FULL";
+}
+
+function matchesScope(location, scopeId) {
+  return detectScopeFromLocation(location) === scopeId;
 }
 
 function serializeValue(value) {
@@ -114,37 +166,39 @@ async function pathSize(location) {
   }
 }
 
-async function collectJsonData() {
+async function collectJsonData(tables) {
   const data = {};
-  for (const table of JSON_TABLES) {
+  for (const table of tables) {
     const rows = await prisma[table.model].findMany();
     data[table.key] = rows.map(serializeRow);
   }
   return data;
 }
 
-function buildJsonPayload(data) {
+function buildJsonPayload(scope, data) {
   return {
     version: 1,
-    kind: "madrassa-backup",
+    kind: scope.kind,
+    scope: scope.id,
     createdAt: new Date().toISOString(),
     type: "DATABASE",
-    scopes: JSON_TABLES.map((table) => table.key),
+    scopes: scope.tables.map((table) => table.key),
     data
   };
 }
 
-async function createJsonBackup() {
+async function createJsonBackup(scopeId = "FULL") {
+  const scope = resolveScope(scopeId);
   const createdAt = new Date().toISOString();
   const folderStamp = stamp();
-  const folder = path.resolve(env.BACKUP_DIR, folderStamp);
+  const folder = path.resolve(env.BACKUP_DIR, scope.dirName, folderStamp);
   await fs.mkdir(folder, { recursive: true });
 
-  const data = await collectJsonData();
-  const payload = buildJsonPayload(data);
+  const data = await collectJsonData(scope.tables);
+  const payload = buildJsonPayload(scope, data);
   payload.createdAt = createdAt;
 
-  const fileName = `dup-backup-${folderStamp}.json`;
+  const fileName = `${scope.filePrefix}-${folderStamp}.json`;
   const filePath = path.join(folder, fileName);
   const json = JSON.stringify(payload, null, 2);
   await fs.writeFile(filePath, json, "utf8");
@@ -163,12 +217,18 @@ async function createJsonBackup() {
     fileName,
     sizeBytes,
     createdAt: log.createdAt.toISOString(),
-    error: null
+    error: null,
+    scope: scope.id
   };
 }
 
-async function runCsvBackup() {
-  const directory = path.resolve(env.BACKUP_DIR, stamp());
+async function runCsvBackup(scopeId = "FULL") {
+  const scope = resolveScope(scopeId);
+  if (scope.id === "FINANCE") {
+    throw new ApiError(400, "CSV backup is only available for full-system backups");
+  }
+
+  const directory = path.resolve(env.BACKUP_DIR, scope.dirName, stamp());
   const exported = [];
 
   try {
@@ -190,7 +250,8 @@ async function runCsvBackup() {
       sizeBytes: await pathSize(directory),
       createdAt: log.createdAt.toISOString(),
       error: null,
-      exported
+      exported,
+      scope: scope.id
     };
   } catch (error) {
     await prisma.backupLog.create({
@@ -218,47 +279,52 @@ function serializeBackupLog(row, sizeBytes = 0) {
     createdAt: row.createdAt.toISOString(),
     error: row.error,
     destination: "remote",
-    downloadable: isFile || row.type === "DATABASE"
+    downloadable: isFile || row.type === "DATABASE",
+    scope: detectScopeFromLocation(row.location)
   };
 }
 
-async function listBackups() {
-  const rows = await prisma.backupLog.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
+async function listBackups(scopeId = "FULL") {
+  const scope = resolveScope(scopeId);
+  const rows = await prisma.backupLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   const items = [];
   for (const row of rows) {
+    if (!matchesScope(row.location, scope.id)) continue;
     items.push(serializeBackupLog(row, await pathSize(row.location)));
   }
-  return items;
+  return items.slice(0, 50);
 }
 
-async function getBackupStats() {
-  const [total, success, failed, latest] = await Promise.all([
-    prisma.backupLog.count(),
-    prisma.backupLog.count({ where: { status: "SUCCESS" } }),
-    prisma.backupLog.count({ where: { status: "FAILED" } }),
-    prisma.backupLog.findFirst({
-      where: { status: "SUCCESS" },
-      orderBy: { createdAt: "desc" }
-    })
-  ]);
+async function getBackupStats(scopeId = "FULL") {
+  const scope = resolveScope(scopeId);
+  const rows = await prisma.backupLog.findMany({
+    select: { status: true, type: true, createdAt: true, location: true }
+  });
+  const scoped = rows.filter((row) => matchesScope(row.location, scope.id));
+  const successRows = scoped.filter((row) => row.status === "SUCCESS");
+  const latest = successRows.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
 
   return {
-    total,
-    success,
-    failed,
+    total: scoped.length,
+    success: successRows.length,
+    failed: scoped.filter((row) => row.status === "FAILED").length,
     lastBackupAt: latest?.createdAt?.toISOString() ?? null,
-    lastBackupType: latest?.type ?? null
+    lastBackupType: latest?.type ?? null,
+    scope: scope.id
   };
 }
 
-async function getBackupOrThrow(id) {
+async function getBackupOrThrow(id, scopeId) {
   const row = await prisma.backupLog.findUnique({ where: { id } });
   if (!row) throw new ApiError(404, "Backup not found");
+  if (scopeId && !matchesScope(row.location, resolveScope(scopeId).id)) {
+    throw new ApiError(404, "Backup not found");
+  }
   return row;
 }
 
-async function getBackup(id) {
-  const row = await getBackupOrThrow(id);
+async function getBackup(id, scopeId) {
+  const row = await getBackupOrThrow(id, scopeId);
   return serializeBackupLog(row, await pathSize(row.location));
 }
 
@@ -270,7 +336,6 @@ async function resolveDownloadPath(row) {
     return { filePath: row.location, fileName: path.basename(row.location) };
   }
 
-  // CSV backups are directories — prefer a single JSON sibling if present, else first file
   const entries = await fs.readdir(row.location);
   const jsonFile = entries.find((name) => name.endsWith(".json"));
   if (jsonFile) {
@@ -283,15 +348,15 @@ async function resolveDownloadPath(row) {
   );
 }
 
-async function downloadBackup(id) {
-  const row = await getBackupOrThrow(id);
+async function downloadBackup(id, scopeId) {
+  const row = await getBackupOrThrow(id, scopeId);
   if (row.status !== "SUCCESS") throw new ApiError(400, "Only successful backups can be downloaded");
   return resolveDownloadPath(row);
 }
 
 function parseBackupPayload(raw) {
   const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
-  if (!payload || payload.kind !== "madrassa-backup" || payload.version !== 1) {
+  if (!payload || payload.version !== 1 || !payload.kind) {
     throw new ApiError(422, "Invalid backup file format");
   }
   if (!payload.data || typeof payload.data !== "object") {
@@ -300,12 +365,29 @@ function parseBackupPayload(raw) {
   return payload;
 }
 
-async function restoreFromPayload(payloadInput) {
-  const payload = parseBackupPayload(payloadInput);
-  const data = payload.data;
+function detectScopeFromPayload(payload) {
+  if (payload.kind === SCOPE.FINANCE.kind || payload.scope === "FINANCE") return SCOPE.FINANCE;
+  if (payload.kind === SCOPE.FULL.kind || payload.scope === "FULL") return SCOPE.FULL;
+  throw new ApiError(422, "Unrecognized backup kind");
+}
 
-  // Delete in reverse dependency order, then recreate parent→child.
-  const deleteOrder = [...JSON_TABLES].reverse();
+async function restoreFromPayload(payloadInput, expectedScopeId = "FULL") {
+  const payload = parseBackupPayload(payloadInput);
+  const payloadScope = detectScopeFromPayload(payload);
+  const expected = resolveScope(expectedScopeId);
+
+  if (payloadScope.id !== expected.id) {
+    throw new ApiError(
+      422,
+      expected.id === "FINANCE"
+        ? "This is a full-system backup. Finance restore only accepts finance backups."
+        : "This is a finance-only backup. Full restore only accepts full-system backups."
+    );
+  }
+
+  const tables = payloadScope.tables;
+  const data = payload.data;
+  const deleteOrder = [...tables].reverse();
 
   await prisma.$transaction(
     async (tx) => {
@@ -313,7 +395,7 @@ async function restoreFromPayload(payloadInput) {
         await tx[table.model].deleteMany({});
       }
 
-      for (const table of JSON_TABLES) {
+      for (const table of tables) {
         const rows = data[table.key];
         if (!Array.isArray(rows) || rows.length === 0) continue;
         await tx[table.model].createMany({ data: rows });
@@ -323,15 +405,16 @@ async function restoreFromPayload(payloadInput) {
   );
 
   return {
-    restoredTables: JSON_TABLES.filter((table) => Array.isArray(data[table.key]) && data[table.key].length > 0).map(
-      (table) => table.key
-    ),
-    createdAt: payload.createdAt ?? null
+    restoredTables: tables
+      .filter((table) => Array.isArray(data[table.key]) && data[table.key].length > 0)
+      .map((table) => table.key),
+    createdAt: payload.createdAt ?? null,
+    scope: payloadScope.id
   };
 }
 
-async function deleteBackup(id) {
-  const row = await getBackupOrThrow(id);
+async function deleteBackup(id, scopeId) {
+  const row = await getBackupOrThrow(id, scopeId);
   try {
     const stat = await fs.stat(row.location);
     if (stat.isDirectory()) {
@@ -348,6 +431,9 @@ async function deleteBackup(id) {
 
 module.exports = {
   JSON_TABLES,
+  FINANCE_TABLES,
+  SCOPE,
+  resolveScope,
   createJsonBackup,
   runCsvBackup,
   listBackups,

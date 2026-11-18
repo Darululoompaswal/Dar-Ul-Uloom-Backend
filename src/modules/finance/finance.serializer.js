@@ -46,6 +46,31 @@ function serializeSalaryRecord(row) {
   };
 }
 
+function feeTotalAmount(feeAmount, concessionAmount, otherAmount) {
+  return Math.max(0, feeAmount - concessionAmount + otherAmount);
+}
+
+function serializeFeeRecord(row) {
+  const feeAmount = decimalToNumber(row.feeAmount);
+  const concessionAmount = decimalToNumber(row.concessionAmount);
+  const otherAmount = decimalToNumber(row.otherAmount);
+  return {
+    id: row.id,
+    date: formatDateOnly(row.date),
+    month: row.month,
+    studentName: row.studentName,
+    fatherName: row.fatherName,
+    className: row.className,
+    studentId: row.studentId ?? null,
+    feeAmount,
+    concessionAmount,
+    otherAmount,
+    totalAmount: feeTotalAmount(feeAmount, concessionAmount, otherAmount),
+    notes: row.notes ?? null,
+    createdAt: row.createdAt.toISOString()
+  };
+}
+
 function serializeKhataEntry(row) {
   const amount = decimalToNumber(row.amount);
   const settledAmount = decimalToNumber(row.settledAmount);
@@ -141,6 +166,7 @@ module.exports = {
   toDateOnly,
   serializeCashTransaction,
   serializeSalaryRecord,
+  serializeFeeRecord,
   serializeKhataEntry,
   serializeSupplyExpense,
   serializeInventoryItem,

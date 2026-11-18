@@ -5,6 +5,7 @@ const {
   formatDateOnly,
   serializeCashTransaction,
   serializeSalaryRecord,
+  serializeFeeRecord,
   serializeKhataEntry,
   serializeSupplyExpense,
   serializeInventoryItem,
@@ -21,6 +22,7 @@ async function getStore() {
   const [
     cashTransactions,
     salaries,
+    feeRecords,
     khataEntries,
     supplyExpenses,
     inventoryItems,
@@ -28,6 +30,7 @@ async function getStore() {
   ] = await Promise.all([
     prisma.cashTransaction.findMany({ where: { deletedAt: null }, orderBy: { createdAt: "desc" } }),
     prisma.salaryRecord.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.feeRecord.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.khataEntry.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.supplyExpense.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.financeInventoryItem.findMany({ orderBy: { updatedAt: "desc" } }),
@@ -37,6 +40,7 @@ async function getStore() {
   return {
     cashTransactions: cashTransactions.map(serializeCashTransaction),
     salaries: salaries.map(serializeSalaryRecord),
+    feeRecords: feeRecords.map(serializeFeeRecord),
     khataEntries: khataEntries.map(serializeKhataEntry),
     supplyExpenses: supplyExpenses.map(serializeSupplyExpense),
     inventoryItems: inventoryItems.map(serializeInventoryItem),
@@ -87,12 +91,17 @@ async function getSummary() {
     .filter((row) => row.isActive)
     .reduce((sum, row) => sum + toPkr(row.monthlyAmount, row.currency), 0);
 
+  const feesThisMonth = (store.feeRecords ?? [])
+    .filter((row) => row.month === month)
+    .reduce((sum, row) => sum + row.totalAmount, 0);
+
   return {
     cashIn,
     cashOut,
     netCash: cashIn - cashOut,
     salariesPending,
     salariesPaidThisMonth,
+    feesThisMonth,
     khataBalance,
     suppliesThisMonth,
     inventoryItems: store.inventoryItems.length,
@@ -215,6 +224,49 @@ async function updateSalaryRecord(id, data) {
 async function deleteSalaryRecord(id) {
   await assertExists("salaryRecord", id, "Salary record not found");
   await prisma.salaryRecord.delete({ where: { id } });
+  return { id };
+}
+
+function feePayload(data) {
+  return {
+    date: toDateOnly(data.date),
+    month: data.month,
+    studentName: data.studentName,
+    fatherName: data.fatherName,
+    className: data.className,
+    studentId: data.studentId ?? null,
+    feeAmount: data.feeAmount,
+    concessionAmount: data.concessionAmount ?? 0,
+    otherAmount: data.otherAmount ?? 0,
+    notes: data.notes ?? null
+  };
+}
+
+async function listFeeRecords(query) {
+  const rows = await prisma.feeRecord.findMany({
+    where: query.month ? { month: query.month } : undefined,
+    orderBy: { createdAt: "desc" }
+  });
+  return rows.map(serializeFeeRecord);
+}
+
+async function createFeeRecord(data) {
+  const row = await prisma.feeRecord.create({ data: feePayload(data) });
+  return serializeFeeRecord(row);
+}
+
+async function updateFeeRecord(id, data) {
+  await assertExists("feeRecord", id, "Fee record not found");
+  const row = await prisma.feeRecord.update({
+    where: { id },
+    data: feePayload(data)
+  });
+  return serializeFeeRecord(row);
+}
+
+async function deleteFeeRecord(id) {
+  await assertExists("feeRecord", id, "Fee record not found");
+  await prisma.feeRecord.delete({ where: { id } });
   return { id };
 }
 
@@ -561,6 +613,10 @@ module.exports = {
   createSalaryRecord,
   updateSalaryRecord,
   deleteSalaryRecord,
+  listFeeRecords,
+  createFeeRecord,
+  updateFeeRecord,
+  deleteFeeRecord,
   listKhataEntries,
   createKhataEntry,
   updateKhataEntry,

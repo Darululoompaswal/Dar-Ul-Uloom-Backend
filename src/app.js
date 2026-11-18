@@ -4,12 +4,14 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 
+const env = require("./config/env");
 const { notFound, errorHandler } = require("./middleware/error.middleware");
 
 const authRoutes = require("./modules/auth/auth.routes");
 const studentRoutes = require("./modules/students/student.routes");
 const uploadRoutes = require("./modules/uploads/upload.routes");
-const { UPLOAD_ROOT } = require("./modules/uploads/upload.middleware");
+const { createProtectedUploadRouter } = require("./modules/uploads/serve-uploads");
+const { createSecurePlaceholderRouter } = require("./modules/_secure-placeholder.routes");
 const departmentRoutes = require("./modules/departments/departments.routes");
 const classRoutes = require("./modules/classes/classes.routes");
 const academicYearRoutes = require("./modules/academic-years/academicYear.routes");
@@ -22,8 +24,30 @@ const attendanceRoutes = require("./modules/attendance/attendance.routes");
 
 const app = express();
 
+function resolveCorsOrigin() {
+  const raw = env.CORS_ORIGIN;
+  if (!raw) {
+    // Production: same-origin / proxy only. Dev: reflect request origin for local tools.
+    return env.NODE_ENV === "production" ? false : true;
+  }
+  if (raw === "*") {
+    return true;
+  }
+  const list = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (list.length === 0) return false;
+  return list.length === 1 ? list[0] : list;
+}
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
+app.use(
+  cors({
+    origin: resolveCorsOrigin(),
+    credentials: true
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -37,9 +61,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/uploads", express.static(UPLOAD_ROOT));
+app.use("/uploads", createProtectedUploadRouter());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/users", require("./modules/users/users.routes"));
 app.use("/api/students", studentRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/departments", departmentRoutes);
@@ -61,14 +86,10 @@ app.use("/api/exam-results", require("./modules/exam-results/examResults.routes"
 app.use("/api/lectures", require("./modules/lectures/lectures.routes"));
 app.use("/api/settings", require("./modules/settings/settings.routes"));
 
-const placeholderModules = ["inventory", "sponsors", "reports"];
+const placeholderModules = ["inventory", "sponsors", "reports", "school", "hifz", "kutub"];
 
 for (const name of placeholderModules) {
-  app.use(`/api/${name}`, require(`./modules/${name}/${name}.routes`));
-}
-
-for (const name of ["school", "hifz", "kutub"]) {
-  app.use(`/api/${name}`, require(`./modules/${name}/${name}.routes`));
+  app.use(`/api/${name}`, createSecurePlaceholderRouter(name));
 }
 
 app.use(notFound);

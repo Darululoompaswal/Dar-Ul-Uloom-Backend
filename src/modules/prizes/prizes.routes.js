@@ -3,6 +3,7 @@ const controller = require("./prizes.controller");
 const validate = require("../../middleware/validate.middleware");
 const { authenticate } = require("../../middleware/auth.middleware");
 const authorize = require("../../middleware/role.middleware");
+const { forbidRoles } = require("../../middleware/role.middleware");
 const audit = require("../../middleware/audit.middleware");
 const {
   listSchema,
@@ -12,9 +13,10 @@ const {
 } = require("./prizes.validation");
 
 router.use(authenticate);
+router.use(forbidRoles("ADMIN"));
 
-const writeRoles = authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY");
-const deleteRoles = authorize("SUPER_ADMIN", "ADMIN");
+const writeRoles = authorize("SUPER_ADMIN", "DATA_ENTRY");
+const deleteRoles = authorize("SUPER_ADMIN");
 
 router.get("/", validate(listSchema), controller.list);
 router.get("/stats", controller.stats);

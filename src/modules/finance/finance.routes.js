@@ -12,6 +12,9 @@ const {
   listSalarySchema,
   createSalarySchema,
   updateSalarySchema,
+  listFeeSchema,
+  createFeeSchema,
+  updateFeeSchema,
   listKhataSchema,
   createKhataSchema,
   updateKhataSchema,
@@ -32,8 +35,10 @@ const {
 } = require("./finance.validation");
 
 router.use(authenticate);
+/** Finance is limited to Super Admin + up to 2 Administrators. */
+router.use(authorize("SUPER_ADMIN", "ADMIN"));
 
-const writeRoles = authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY");
+const writeRoles = authorize("SUPER_ADMIN", "ADMIN");
 const deleteRoles = authorize("SUPER_ADMIN", "ADMIN");
 
 router.get("/summary", controller.getSummary);
@@ -85,6 +90,29 @@ router.delete(
   validate(financeIdSchema),
   audit("DELETE", "SALARY_RECORD", (req) => req.params.id),
   controller.deleteSalary
+);
+
+router.get("/fees", validate(listFeeSchema), controller.listFees);
+router.post(
+  "/fees",
+  writeRoles,
+  validate(createFeeSchema),
+  audit("CREATE", "FEE_RECORD", (_, body) => body?.data?.id),
+  controller.createFee
+);
+router.put(
+  "/fees/:id",
+  writeRoles,
+  validate(updateFeeSchema),
+  audit("UPDATE", "FEE_RECORD", (req) => req.params.id),
+  controller.updateFee
+);
+router.delete(
+  "/fees/:id",
+  deleteRoles,
+  validate(financeIdSchema),
+  audit("DELETE", "FEE_RECORD", (req) => req.params.id),
+  controller.deleteFee
 );
 
 router.get("/khata-entries", validate(listKhataSchema), controller.listKhata);

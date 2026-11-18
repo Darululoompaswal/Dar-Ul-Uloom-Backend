@@ -727,6 +727,27 @@ model SalaryRecord {
   @@index([updatedAt])
 }
 
+model FeeRecord {
+  id               String   @id @default(uuid())
+  date             DateTime @db.Date
+  month            String
+  studentName      String
+  fatherName       String
+  className        String
+  studentId        String?
+  feeAmount        Decimal  @db.Decimal(12, 2)
+  concessionAmount Decimal  @default(0) @db.Decimal(12, 2)
+  otherAmount      Decimal  @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([date])
+  @@index([month])
+  @@index([studentName])
+  @@index([updatedAt])
+}
+
 model KhataEntry {
   id            String         @id @default(uuid())
   partyName     String

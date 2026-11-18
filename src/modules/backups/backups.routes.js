@@ -11,6 +11,7 @@ const {
 } = require("./backups.validation");
 
 router.use(authenticate);
+/** Super Admin: full-system backups. Finance employees (ADMIN): finance-only backups. */
 router.use(authorize("SUPER_ADMIN", "ADMIN"));
 
 router.get("/stats", controller.stats);

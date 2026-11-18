@@ -43,6 +43,23 @@ exports.deleteSalary = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.deleteSalaryRecord(req.params.id) });
 });
 
+exports.listFees = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.listFeeRecords(req.validated.query) });
+});
+
+exports.createFee = asyncHandler(async (req, res) => {
+  const data = await service.createFeeRecord(req.validated.body);
+  res.status(201).json({ success: true, data });
+});
+
+exports.updateFee = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.updateFeeRecord(req.params.id, req.validated.body) });
+});
+
+exports.deleteFee = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await service.deleteFeeRecord(req.params.id) });
+});
+
 exports.listKhata = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await service.listKhataEntries() });
 });

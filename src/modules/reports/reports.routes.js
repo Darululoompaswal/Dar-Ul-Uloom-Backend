@@ -1,7 +1,3 @@
-const router = require("express").Router();
+const { createSecurePlaceholderRouter } = require("../_secure-placeholder.routes");
 
-router.get("/", (req, res) => {
-  res.json({ success: true, message: "reports module initialized" });
-});
-
-module.exports = router;
+module.exports = createSecurePlaceholderRouter("reports");

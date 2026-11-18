@@ -6,6 +6,7 @@ const authorize = require("../../middleware/role.middleware");
 const { listAuditLogSchema } = require("./auditLog.validation");
 
 router.use(authenticate);
+/** Super Admin: all logs. Finance employees: finance entity logs only. */
 router.use(authorize("SUPER_ADMIN", "ADMIN"));
 
 router.get("/stats", controller.stats);

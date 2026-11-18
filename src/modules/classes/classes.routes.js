@@ -3,6 +3,7 @@ const controller = require("./classes.controller");
 const validate = require("../../middleware/validate.middleware");
 const { authenticate } = require("../../middleware/auth.middleware");
 const authorize = require("../../middleware/role.middleware");
+const { forbidRoles } = require("../../middleware/role.middleware");
 const audit = require("../../middleware/audit.middleware");
 const {
   listClassesSchema,
@@ -18,6 +19,7 @@ const {
 } = require("../lectures/lectures.validation");
 
 router.use(authenticate);
+router.use(forbidRoles("ADMIN"));
 
 router.get("/", validate(listClassesSchema), controller.list);
 router.get("/:id/students", validate(classIdSchema), controller.listStudents);
@@ -28,28 +30,28 @@ router.get(
 );
 router.post(
   "/:classId/lectures",
-  authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY", "TEACHER"),
+  authorize("SUPER_ADMIN", "DATA_ENTRY", "TEACHER"),
   validate(createLectureSchema),
   audit("CREATE", "CLASS_LECTURE", (_, body) => body?.data?.id),
   lecturesController.create
 );
 router.post(
   "/",
-  authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY"),
+  authorize("SUPER_ADMIN", "DATA_ENTRY"),
   validate(createClassSchema),
   audit("CREATE", "CLASS", (_, body) => body?.data?.id),
   controller.create
 );
 router.patch(
   "/:id",
-  authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY"),
+  authorize("SUPER_ADMIN", "DATA_ENTRY"),
   validate(updateClassSchema),
   audit("UPDATE", "CLASS", (req) => req.params.id),
   controller.update
 );
 router.delete(
   "/:id",
-  authorize("SUPER_ADMIN", "ADMIN"),
+  authorize("SUPER_ADMIN"),
   validate(deleteClassSchema),
   audit("DELETE", "CLASS", (req) => req.params.id),
   controller.remove

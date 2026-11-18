@@ -15,27 +15,41 @@ const restoreUpload = multer({
   }
 }).single("file");
 
+function backupScopeForUser(req) {
+  if (req.user?.role === "ADMIN") return "FINANCE";
+  const fromQuery = req.validated?.query?.scope || req.query?.scope;
+  const fromBody = req.validated?.body?.scope || req.body?.scope;
+  if (fromQuery === "FINANCE" || fromBody === "FINANCE") return "FINANCE";
+  return "FULL";
+}
+
 exports.list = async (req, res) => {
-  res.json({ success: true, data: await service.listBackups() });
+  const scope = backupScopeForUser(req);
+  res.json({ success: true, data: await service.listBackups(scope) });
 };
 
 exports.stats = async (req, res) => {
-  res.json({ success: true, data: await service.getBackupStats() });
+  const scope = backupScopeForUser(req);
+  res.json({ success: true, data: await service.getBackupStats(scope) });
 };
 
 exports.get = async (req, res) => {
-  res.json({ success: true, data: await service.getBackup(req.params.id) });
+  const scope = backupScopeForUser(req);
+  res.json({ success: true, data: await service.getBackup(req.params.id, scope) });
 };
 
 exports.create = async (req, res) => {
+  const scope = backupScopeForUser(req);
   const type = req.validated?.body?.type ?? "DATABASE";
-  const result = type === "CSV" ? await service.runCsvBackup() : await service.createJsonBackup();
+  const result =
+    type === "CSV" ? await service.runCsvBackup(scope) : await service.createJsonBackup(scope);
   res.status(201).json({ success: true, data: result });
 };
 
 exports.download = async (req, res, next) => {
   try {
-    const { filePath, fileName } = await service.downloadBackup(req.params.id);
+    const scope = backupScopeForUser(req);
+    const { filePath, fileName } = await service.downloadBackup(req.params.id, scope);
     res.download(filePath, fileName);
   } catch (error) {
     next(error);
@@ -46,6 +60,7 @@ exports.restore = (req, res, next) => {
   restoreUpload(req, res, async (error) => {
     if (error) return next(error);
     try {
+      const scope = backupScopeForUser(req);
       let payload;
       if (req.file?.buffer) {
         payload = req.file.buffer.toString("utf8");
@@ -54,7 +69,7 @@ exports.restore = (req, res, next) => {
       } else {
         throw new ApiError(422, "Upload a backup JSON file");
       }
-      const result = await service.restoreFromPayload(payload);
+      const result = await service.restoreFromPayload(payload, scope);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -63,5 +78,6 @@ exports.restore = (req, res, next) => {
 };
 
 exports.remove = async (req, res) => {
-  res.json({ success: true, data: await service.deleteBackup(req.params.id) });
+  const scope = backupScopeForUser(req);
+  res.json({ success: true, data: await service.deleteBackup(req.params.id, scope) });
 };

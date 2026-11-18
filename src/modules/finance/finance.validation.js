@@ -9,6 +9,8 @@ const KHATA_ENTRY_TYPES = ["DEBIT", "CREDIT"];
 const SUPPLY_CATEGORIES = ["VEGETABLES", "WOOD", "CONSTRUCTION"];
 
 const positiveAmount = z.coerce.number().positive("Amount must be greater than zero");
+const nonNegativeAmount = z.coerce.number().min(0, "Amount must be zero or greater");
+const positiveQuantity = z.coerce.number().positive("Quantity must be greater than zero");
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
 const monthString = z.string().regex(/^\d{4}-\d{2}$/, "Month must be YYYY-MM");
 
@@ -61,14 +63,46 @@ const createSalarySchema = z.object({
   params: z.object({})
 });
 
+const listFeeSchema = z.object({
+  body: z.object({}),
+  query: z.object({
+    month: optional(monthString)
+  }),
+  params: z.object({})
+});
+
+const createFeeSchema = z.object({
+  body: z
+    .object({
+      date: dateString,
+      month: monthString,
+      studentName: z.string().trim().min(1),
+      fatherName: z.string().trim().min(1),
+      className: z.string().trim().min(1),
+      studentId: nullableString,
+      feeAmount: positiveAmount,
+      concessionAmount: nonNegativeAmount.default(0),
+      otherAmount: nonNegativeAmount.default(0),
+      notes: nullableString
+    })
+    .superRefine((value, ctx) => {
+      if (value.concessionAmount > value.feeAmount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["concessionAmount"],
+          message: "Concession cannot exceed fee amount"
+        });
+      }
+    }),
+  query: z.object({}),
+  params: z.object({})
+});
+
 const listKhataSchema = z.object({
   body: z.object({}),
   query: z.object({}),
   params: z.object({})
 });
-
-const nonNegativeAmount = z.coerce.number().min(0, "Amount must be zero or greater");
-const positiveQuantity = z.coerce.number().positive("Quantity must be greater than zero");
 
 const createKhataSchema = z.object({
   body: z
@@ -258,6 +292,12 @@ const updateSalarySchema = z.object({
   params: idParams
 });
 
+const updateFeeSchema = z.object({
+  body: createFeeSchema.shape.body,
+  query: z.object({}),
+  params: idParams
+});
+
 const updateKhataSchema = z.object({
   body: createKhataSchema.shape.body,
   query: z.object({}),
@@ -289,6 +329,9 @@ module.exports = {
   listSalarySchema,
   createSalarySchema,
   updateSalarySchema,
+  listFeeSchema,
+  createFeeSchema,
+  updateFeeSchema,
   listKhataSchema,
   createKhataSchema,
   updateKhataSchema,

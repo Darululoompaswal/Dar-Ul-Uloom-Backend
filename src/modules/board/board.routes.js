@@ -3,6 +3,7 @@ const controller = require("./board.controller");
 const validate = require("../../middleware/validate.middleware");
 const { authenticate } = require("../../middleware/auth.middleware");
 const authorize = require("../../middleware/role.middleware");
+const { forbidRoles } = require("../../middleware/role.middleware");
 const audit = require("../../middleware/audit.middleware");
 const {
   listExamSchema,
@@ -15,9 +16,10 @@ const {
 } = require("./board.validation");
 
 router.use(authenticate);
+router.use(forbidRoles("ADMIN"));
 
-const writeRoles = authorize("SUPER_ADMIN", "ADMIN", "DATA_ENTRY");
-const deleteRoles = authorize("SUPER_ADMIN", "ADMIN");
+const writeRoles = authorize("SUPER_ADMIN", "DATA_ENTRY");
+const deleteRoles = authorize("SUPER_ADMIN");
 
 router.get("/stats", controller.stats);
 
